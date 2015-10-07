@@ -1,0 +1,5 @@
+*~
+*.pyc
+*.pdf
+[_]build/
+*.egg-info/
