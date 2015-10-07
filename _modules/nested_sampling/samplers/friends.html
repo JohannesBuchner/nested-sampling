@@ -1,0 +1,500 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>nested_sampling.samplers.friends &mdash; Nested Sampling 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Nested Sampling 1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">Nested Sampling 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for nested_sampling.samplers.friends</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">import</span> <span class="nn">scipy.spatial</span><span class="o">,</span> <span class="nn">scipy.cluster</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+<span class="kn">from</span> <span class="nn">nested_sampling.clustering</span> <span class="kn">import</span> <span class="n">clusterdetect</span>
+<span class="kn">from</span> <span class="nn">nested_sampling.clustering.neighbors</span> <span class="kn">import</span> <span class="n">find_maxdistance</span><span class="p">,</span> <span class="n">find_rdistance</span><span class="p">,</span> <span class="n">initial_rdistance_guess</span><span class="p">,</span> <span class="n">nearest_rdistance_guess</span>
+
+<div class="viewcode-block" id="FriendsConstrainer"><a class="viewcode-back" href="../../../drawing.html#nested_sampling.samplers.friends.FriendsConstrainer">[docs]</a><span class="k">class</span> <span class="nc">FriendsConstrainer</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	Rejection sampling pre-filtering method based on neighborhood to live points.</span>
+
+<span class="sd">	&quot;Distant&quot; means in this implementation that the distance to a cluster member</span>
+<span class="sd">	is large. </span>
+<span class="sd">	The maximum distance to a cluster is computed by considering each</span>
+<span class="sd">	cluster member and its k nearest neighbors in turn, and </span>
+<span class="sd">	computing the maximum distance.</span>
+<span class="sd">	</span>
+<span class="sd">	:param rebuild_every: After how many iterations should the clustering</span>
+<span class="sd">		distance be re-computed?</span>
+<span class="sd">	    </span>
+<span class="sd">	:param radial:	</span>
+<span class="sd">		if radial = True, then the normal euclidean distance is used.</span>
+<span class="sd">		otherwise, the absolute coordinate difference in each dimension is used.</span>
+<span class="sd">	</span>
+<span class="sd">	:param metric:</span>
+<span class="sd">		metric to use. Use &#39;chebyshev&#39; for SupFriends, in which case then </span>
+<span class="sd">		the supremum norm is used. Use &#39;euclidean&#39; for RadFriends, via </span>
+<span class="sd">		the euclidean norm.</span>
+<span class="sd">	</span>
+<span class="sd">	:param jackknife:</span>
+<span class="sd">		if True, instead of leaving out a group of live points in</span>
+<span class="sd">		the distance estimate, only one is left out in turn (jackknife resampling</span>
+<span class="sd">		instead of bootstrap resampling).</span>
+<span class="sd">	</span>
+<span class="sd">	:param force_shrink:</span>
+<span class="sd">		if True, the distance can only decrease between sampling steps.</span>
+<span class="sd">	</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rebuild_every</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span> <span class="n">radial</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span> <span class="n">metric</span> <span class="o">=</span> <span class="s">&#39;euclidean&#39;</span><span class="p">,</span> <span class="n">jackknife</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span>
+			<span class="n">force_shrink</span> <span class="o">=</span> <span class="bp">False</span><span class="p">,</span>
+			<span class="n">hinter</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">verbose</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">maxima</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">iter</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">region</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">rebuild_every</span> <span class="o">=</span> <span class="n">rebuild_every</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">radial</span> <span class="o">=</span> <span class="n">radial</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">metric</span> <span class="o">=</span> <span class="n">metric</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">file</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">jackknife</span> <span class="o">=</span> <span class="n">jackknife</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">force_shrink</span> <span class="o">=</span> <span class="bp">False</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">hinter</span> <span class="o">=</span> <span class="n">hinter</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span>
+	
+<div class="viewcode-block" id="FriendsConstrainer.cluster"><a class="viewcode-back" href="../../../drawing.html#nested_sampling.samplers.friends.FriendsConstrainer.cluster">[docs]</a>	<span class="k">def</span> <span class="nf">cluster</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">ndim</span><span class="p">,</span> <span class="n">keepRadius</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span> <span class="k">print</span> <span class="s">&#39;building region ...&#39;</span>
+		<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">10</span><span class="p">:</span>
+			<span class="k">if</span> <span class="n">keepRadius</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="s">&#39;maxdistance&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">:</span>
+				<span class="n">maxdistance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;maxdistance&#39;</span><span class="p">]</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">radial</span><span class="p">:</span>
+					<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">jackknife</span><span class="p">:</span>
+						<span class="c">#maxdistance = initial_rdistance_guess(u, k=1, metric=self.metric)</span>
+						<span class="n">maxdistance</span> <span class="o">=</span> <span class="n">nearest_rdistance_guess</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">metric</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">metric</span><span class="p">)</span>
+					<span class="k">else</span><span class="p">:</span>
+						<span class="n">maxdistance</span> <span class="o">=</span> <span class="n">find_rdistance</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">nbootstraps</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">metric</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">metric</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">)</span>
+				<span class="k">else</span><span class="p">:</span>
+					<span class="n">maxdistance</span> <span class="o">=</span> <span class="n">find_maxdistance</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
+			<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">force_shrink</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="s">&#39;maxdistance&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">:</span>
+				<span class="n">maxdistance</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">maxdistance</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;maxdistance&#39;</span><span class="p">])</span>
+			<span class="n">ulow</span>  <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">max</span><span class="p">([</span><span class="n">u</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="n">maxdistance</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">ndim</span><span class="p">)],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+			<span class="n">uhigh</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">min</span><span class="p">([</span><span class="n">u</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">maxdistance</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">ndim</span><span class="p">)],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">maxdistance</span> <span class="o">=</span> <span class="bp">None</span>
+			<span class="n">ulow</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">ndim</span><span class="p">)</span>
+			<span class="n">uhigh</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">ndim</span><span class="p">)</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span> <span class="k">print</span> <span class="s">&#39;setting sampling region:&#39;</span><span class="p">,</span> <span class="p">(</span><span class="n">ulow</span><span class="p">,</span> <span class="n">uhigh</span><span class="p">),</span> <span class="n">maxdistance</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">region</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">members</span><span class="o">=</span><span class="n">u</span><span class="p">,</span> <span class="n">maxdistance</span><span class="o">=</span><span class="n">maxdistance</span><span class="p">,</span> <span class="n">ulow</span><span class="o">=</span><span class="n">ulow</span><span class="p">,</span> <span class="n">uhigh</span><span class="o">=</span><span class="n">uhigh</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">generator</span> <span class="o">=</span> <span class="bp">None</span>
+		</div>
+<div class="viewcode-block" id="FriendsConstrainer.is_inside"><a class="viewcode-back" href="../../../drawing.html#nested_sampling.samplers.friends.FriendsConstrainer.is_inside">[docs]</a>	<span class="k">def</span> <span class="nf">is_inside</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Check if this new point is near or inside one of our clusters</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">ndim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
+		<span class="n">ulow</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;ulow&#39;</span><span class="p">]</span>
+		<span class="n">uhigh</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;uhigh&#39;</span><span class="p">]</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="p">((</span><span class="n">ulow</span> <span class="o">&lt;=</span> <span class="n">u</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span> <span class="ow">and</span> <span class="p">(</span><span class="n">uhigh</span> <span class="o">&gt;=</span> <span class="n">u</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()):</span>
+			<span class="c"># does not even lie in our primitive rectangle</span>
+			<span class="c"># do not even need to compute the distances</span>
+			<span class="k">return</span> <span class="bp">False</span>
+		
+		<span class="n">members</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;members&#39;</span><span class="p">]</span>
+		<span class="n">maxdistance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;maxdistance&#39;</span><span class="p">]</span>
+		
+		<span class="c"># if not initialized: no prefiltering</span>
+		<span class="k">if</span> <span class="n">maxdistance</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">True</span>
+		
+		<span class="c"># compute distance to each member in each dimension</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">radial</span><span class="p">:</span>
+			<span class="n">dists</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">spatial</span><span class="o">.</span><span class="n">distance</span><span class="o">.</span><span class="n">cdist</span><span class="p">(</span><span class="n">members</span><span class="p">,</span> <span class="p">[</span><span class="n">u</span><span class="p">],</span> <span class="n">metric</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">metric</span><span class="p">)</span>
+			<span class="k">assert</span> <span class="n">dists</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">members</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
+			<span class="n">dist_criterion</span> <span class="o">=</span> <span class="n">dists</span> <span class="o">&lt;</span> <span class="n">maxdistance</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">dists</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">u</span> <span class="o">-</span> <span class="n">members</span><span class="p">)</span>
+			<span class="k">assert</span> <span class="n">dists</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">members</span><span class="p">),</span> <span class="n">ndim</span><span class="p">),</span> <span class="p">(</span><span class="n">dists</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">ndim</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">members</span><span class="p">))</span>
+			<span class="c"># nearer than maxdistance in all dimensions</span>
+			<span class="n">dist_criterion</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">dists</span> <span class="o">&lt;</span> <span class="n">maxdistance</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+			<span class="k">assert</span> <span class="n">dist_criterion</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">members</span><span class="p">),),</span> <span class="p">(</span><span class="n">dist_criterion</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">members</span><span class="p">))</span>
+		<span class="c"># is it true for at least one?</span>
+		<span class="n">closeby</span> <span class="o">=</span> <span class="n">dist_criterion</span><span class="o">.</span><span class="n">any</span><span class="p">()</span>
+		<span class="k">if</span> <span class="n">closeby</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">True</span>
+		<span class="k">return</span> <span class="bp">False</span>
+	</div>
+<div class="viewcode-block" id="FriendsConstrainer.are_inside_rect"><a class="viewcode-back" href="../../../drawing.html#nested_sampling.samplers.friends.FriendsConstrainer.are_inside_rect">[docs]</a>	<span class="k">def</span> <span class="nf">are_inside_rect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Check if the new points are near or inside one of our clusters</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">ulow</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;ulow&#39;</span><span class="p">]</span>
+		<span class="n">uhigh</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;uhigh&#39;</span><span class="p">]</span>
+		<span class="n">mask</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(((</span><span class="n">ulow</span> <span class="o">&lt;=</span> <span class="n">u</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="n">uhigh</span> <span class="o">&gt;=</span> <span class="n">u</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)))</span></div>
+	<span class="k">def</span> <span class="nf">are_inside_cluster</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">ndim</span><span class="p">):</span>
+		<span class="n">members</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;members&#39;</span><span class="p">]</span>
+		<span class="n">maxdistance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;maxdistance&#39;</span><span class="p">]</span>
+		
+		<span class="c"># if not initialized: no prefiltering</span>
+		<span class="k">if</span> <span class="n">maxdistance</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="k">return</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">u</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+		
+		<span class="c"># compute distance to each member in each dimension</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">radial</span><span class="p">:</span>
+			<span class="n">dists</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">spatial</span><span class="o">.</span><span class="n">distance</span><span class="o">.</span><span class="n">cdist</span><span class="p">(</span><span class="n">members</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">metric</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">metric</span><span class="p">)</span>
+			<span class="k">assert</span> <span class="n">dists</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">members</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">u</span><span class="p">))</span>
+			<span class="n">dist_criterion</span> <span class="o">=</span> <span class="n">dists</span> <span class="o">&lt;</span> <span class="n">maxdistance</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+		<span class="c"># is it true for at least one?</span>
+		<span class="n">closeby</span> <span class="o">=</span> <span class="n">dist_criterion</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+		<span class="k">return</span> <span class="n">closeby</span>
+	<span class="k">def</span> <span class="nf">generate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ndim</span><span class="p">):</span>
+		<span class="n">it</span> <span class="o">=</span> <span class="bp">True</span>
+		<span class="n">verbose</span> <span class="o">=</span> <span class="bp">False</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span>
+		<span class="n">ntotal</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="c"># largest maxdistance where generating from full space makes sense</span>
+		<span class="n">full_maxdistance</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="mf">0.01</span><span class="p">)</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="n">ndim</span><span class="p">)</span>
+		<span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+			<span class="n">maxdistance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;maxdistance&#39;</span><span class="p">]</span>
+			<span class="k">if</span> <span class="n">maxdistance</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+				<span class="c"># do a prefiltering rejection sampling first</span>
+				<span class="n">u</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;ulow&#39;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;uhigh&#39;</span><span class="p">],</span> <span class="n">size</span><span class="o">=</span><span class="n">ndim</span><span class="p">)</span>
+				<span class="k">yield</span> <span class="n">u</span><span class="p">,</span> <span class="n">ntotal</span>
+				<span class="n">ntotal</span> <span class="o">=</span> <span class="mi">0</span>
+				<span class="k">continue</span>
+			<span class="n">members</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;members&#39;</span><span class="p">]</span>
+			<span class="n">it</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mf">0.01</span>
+			<span class="c"># depending on the region size compared to </span>
+			<span class="c"># the total space, one of the two methods will</span>
+			<span class="c"># be more efficient</span>
+			<span class="k">if</span> <span class="n">it</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">radial</span> <span class="ow">or</span> <span class="n">maxdistance</span> <span class="o">&gt;</span> <span class="n">full_maxdistance</span><span class="p">:</span>
+				<span class="n">it</span> <span class="o">=</span> <span class="bp">True</span>
+				<span class="c"># for large regions</span>
+				<span class="c"># do a prefiltering rejection sampling first</span>
+				<span class="n">us</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;ulow&#39;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;uhigh&#39;</span><span class="p">],</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">ndim</span><span class="p">))</span>
+				<span class="n">ntotal</span> <span class="o">+=</span> <span class="mi">100</span>
+				<span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">are_inside_cluster</span><span class="p">(</span><span class="n">us</span><span class="p">,</span> <span class="n">ndim</span><span class="p">)</span>
+				<span class="k">if</span> <span class="ow">not</span> <span class="n">mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+					<span class="k">continue</span>
+				<span class="n">us</span> <span class="o">=</span> <span class="n">us</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+				<span class="c">#indices = numpy.arange(len(mask))[mask]</span>
+				<span class="c">#for i in indices:</span>
+				<span class="c">#	u = us[indices[i],:]</span>
+				<span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">us</span><span class="p">:</span>
+					<span class="k">yield</span> <span class="n">u</span><span class="p">,</span> <span class="n">ntotal</span>
+					<span class="n">ntotal</span> <span class="o">=</span> <span class="mi">0</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="c"># for small regions</span>
+				<span class="c"># draw from points</span>
+				<span class="n">us</span> <span class="o">=</span> <span class="n">members</span><span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">members</span><span class="p">),</span> <span class="mi">100</span><span class="p">),:]</span>
+				<span class="n">ntotal</span> <span class="o">+=</span> <span class="mi">100</span>
+				<span class="k">if</span> <span class="n">verbose</span><span class="p">:</span> <span class="k">print</span> <span class="s">&#39;chosen point&#39;</span><span class="p">,</span> <span class="n">us</span>
+				<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">metric</span> <span class="o">==</span> <span class="s">&#39;euclidean&#39;</span><span class="p">:</span>
+					<span class="c"># draw direction around it</span>
+					<span class="n">direction</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">ndim</span><span class="p">))</span>
+					<span class="n">direction</span> <span class="o">=</span> <span class="n">direction</span> <span class="o">/</span> <span class="p">((</span><span class="n">direction</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">**</span><span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">))</span>
+					<span class="k">if</span> <span class="n">verbose</span><span class="p">:</span> <span class="k">print</span> <span class="s">&#39;chosen direction&#39;</span><span class="p">,</span> <span class="n">direction</span>
+					<span class="c"># choose radius: volume gets larger towards the outside</span>
+					<span class="c"># so give the correct weight with dimensionality</span>
+					<span class="n">radius</span> <span class="o">=</span> <span class="n">maxdistance</span> <span class="o">*</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span><span class="mi">1</span><span class="p">))</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="n">ndim</span><span class="p">)</span>
+					<span class="n">us</span> <span class="o">=</span> <span class="n">us</span> <span class="o">+</span> <span class="n">direction</span> <span class="o">*</span> <span class="n">radius</span>
+				<span class="k">else</span><span class="p">:</span>
+					<span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">metric</span> <span class="o">==</span> <span class="s">&#39;chebyshev&#39;</span>
+					<span class="n">us</span> <span class="o">=</span> <span class="n">us</span> <span class="o">+</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="n">maxdistance</span><span class="p">,</span> <span class="n">maxdistance</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">ndim</span><span class="p">))</span>
+				<span class="k">if</span> <span class="n">verbose</span><span class="p">:</span> <span class="k">print</span> <span class="s">&#39;using point&#39;</span><span class="p">,</span> <span class="n">u</span>
+				<span class="n">inside</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">logical_and</span><span class="p">((</span><span class="n">us</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="n">us</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+				<span class="k">if</span> <span class="ow">not</span> <span class="n">inside</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+					<span class="k">if</span> <span class="n">verbose</span><span class="p">:</span> <span class="k">print</span> <span class="s">&#39;outside boundaries&#39;</span><span class="p">,</span> <span class="n">us</span><span class="p">,</span> <span class="n">direction</span><span class="p">,</span> <span class="n">maxdistance</span>
+					<span class="k">continue</span>
+				<span class="n">us</span> <span class="o">=</span> <span class="n">us</span><span class="p">[</span><span class="n">inside</span><span class="p">]</span>
+				<span class="c"># count the number of points this is close to</span>
+				<span class="n">dists</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">spatial</span><span class="o">.</span><span class="n">distance</span><span class="o">.</span><span class="n">cdist</span><span class="p">(</span><span class="n">members</span><span class="p">,</span> <span class="n">us</span><span class="p">,</span> <span class="n">metric</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">metric</span><span class="p">)</span>
+				<span class="k">assert</span> <span class="n">dists</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">members</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">us</span><span class="p">))</span>
+				<span class="n">nnear</span> <span class="o">=</span> <span class="p">(</span><span class="n">dists</span> <span class="o">&lt;</span> <span class="n">maxdistance</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+				<span class="k">if</span> <span class="n">verbose</span><span class="p">:</span> <span class="k">print</span> <span class="s">&#39;near&#39;</span><span class="p">,</span> <span class="n">nnear</span>
+				<span class="c">#ntotal += 1</span>
+				<span class="c"># accept with probability 1./nnear</span>
+				<span class="n">coin</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">us</span><span class="p">))</span>
+				
+				<span class="n">accept</span> <span class="o">=</span> <span class="n">coin</span> <span class="o">&lt;</span> <span class="mf">1.</span> <span class="o">/</span> <span class="n">nnear</span>
+				<span class="k">if</span> <span class="ow">not</span> <span class="n">accept</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+					<span class="k">if</span> <span class="n">verbose</span><span class="p">:</span> <span class="k">print</span> <span class="s">&#39;probabilistic rejection due to overlaps&#39;</span>
+					<span class="k">continue</span>
+				<span class="n">us</span> <span class="o">=</span> <span class="n">us</span><span class="p">[</span><span class="n">accept</span><span class="p">]</span>
+				<span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">us</span><span class="p">:</span>
+					<span class="k">yield</span> <span class="n">u</span><span class="p">,</span> <span class="n">ntotal</span>
+					<span class="n">ntotal</span> <span class="o">=</span> <span class="mi">0</span>
+			
+	<span class="k">def</span> <span class="nf">debug_plot</span><span class="p">(</span><span class="n">Lmin</span><span class="p">,</span> <span class="n">priortransform</span><span class="p">,</span> <span class="n">loglikelihood</span><span class="p">,</span> <span class="n">previous</span><span class="p">,</span> <span class="n">ndim</span><span class="p">):</span>
+		<span class="c"># plot sampling region</span>
+		<span class="c"># and evaluate likelihood on the borders, verifying</span>
+		<span class="c"># that it is below Lmin</span>
+		<span class="c"># generate points on the surface of all points</span>
+		<span class="c"># rank them based on ??</span>
+		<span class="k">pass</span>
+	
+	<span class="k">def</span> <span class="nf">rebuild</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">previous</span><span class="p">,</span> <span class="n">ndim</span><span class="p">,</span> <span class="n">Lmin</span><span class="p">,</span> <span class="n">keepRadius</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+		<span class="n">previousL</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">L</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">L</span> <span class="ow">in</span> <span class="n">previous</span><span class="p">])</span>
+		<span class="n">previousu</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">u</span> <span class="k">for</span> <span class="n">u</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">previous</span><span class="p">])</span>
+		<span class="k">assert</span> <span class="n">previousu</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">ndim</span><span class="p">,</span> <span class="n">previousu</span><span class="o">.</span><span class="n">shape</span>
+		<span class="n">high</span> <span class="o">=</span> <span class="n">previousL</span> <span class="o">&gt;</span> <span class="n">Lmin</span>
+		<span class="n">u</span> <span class="o">=</span> <span class="n">previousu</span><span class="p">[</span><span class="n">high</span><span class="p">]</span>
+		<span class="n">L</span> <span class="o">=</span> <span class="n">previousL</span><span class="p">[</span><span class="n">high</span><span class="p">]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">cluster</span><span class="p">(</span><span class="n">u</span><span class="o">=</span><span class="n">u</span><span class="p">,</span> <span class="n">ndim</span><span class="o">=</span><span class="n">ndim</span><span class="p">,</span> <span class="n">keepRadius</span><span class="o">=</span><span class="n">keepRadius</span><span class="p">)</span>
+		<span class="c"># reset generator</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">generator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="n">ndim</span><span class="o">=</span><span class="n">ndim</span><span class="p">)</span>
+	<span class="k">def</span> <span class="nf">debug</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ndim</span><span class="p">):</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="c">#self.file = open(&quot;friends_debug.txt&quot;, &quot;a&quot;)</span>
+			<span class="kn">import</span> <span class="nn">tempfile</span>
+			<span class="n">filename</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mktemp</span><span class="p">(</span><span class="nb">dir</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span>
+				<span class="n">prefix</span><span class="o">=</span><span class="s">&#39;friends</span><span class="si">%s</span><span class="s">-</span><span class="si">%s</span><span class="s">_&#39;</span> <span class="o">%</span> <span class="p">(</span>
+				<span class="s">&#39;1&#39;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">jackknife</span> <span class="k">else</span> <span class="s">&#39;&#39;</span><span class="p">,</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">metric</span><span class="p">))</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s">&#39;w&#39;</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;{} {} {}</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">iter</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;maxdistance&#39;</span><span class="p">],</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;members&#39;</span><span class="p">])))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;{} {} {} {}</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">iter</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;maxdistance&#39;</span><span class="p">],</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;members&#39;</span><span class="p">]),</span> <span class="n">ndim</span><span class="p">))</span>
+	<span class="k">def</span> <span class="nf">debugplot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+		<span class="k">print</span> <span class="s">&#39;creating plot...&#39;</span>
+		<span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;members&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span> <span class="o">/</span> <span class="mi">2</span>
+		<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="n">n</span><span class="o">/</span><span class="mi">2</span><span class="o">*</span><span class="mi">4</span><span class="o">+</span><span class="mi">1</span><span class="p">))</span>
+		<span class="n">m</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;members&#39;</span><span class="p">]</span>
+		<span class="n">d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;maxdistance&#39;</span><span class="p">]</span>
+		<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+			<span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">n</span> <span class="o">/</span> <span class="mf">2.</span><span class="p">),</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="o">+</span><span class="n">i</span><span class="p">)</span>
+			<span class="n">j</span> <span class="o">=</span> <span class="n">i</span> <span class="o">*</span> <span class="mi">2</span>
+			<span class="n">k</span> <span class="o">=</span> <span class="n">i</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span>
+			<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">m</span><span class="p">[:,</span><span class="n">j</span><span class="p">],</span> <span class="n">m</span><span class="p">[:,</span><span class="n">k</span><span class="p">],</span> <span class="s">&#39;x&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s">&#39;b&#39;</span><span class="p">,</span> <span class="n">ms</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+			<span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">add_artist</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">Circle</span><span class="p">((</span><span class="n">m</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="n">j</span><span class="p">],</span> <span class="n">m</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="n">k</span><span class="p">]),</span> <span class="n">d</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s">&#39;g&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">))</span>
+			<span class="k">if</span> <span class="n">u</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+				<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">u</span><span class="p">[</span><span class="n">j</span><span class="p">],</span> <span class="n">u</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="s">&#39;s&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s">&#39;r&#39;</span><span class="p">)</span>
+				<span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">add_artist</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">Circle</span><span class="p">((</span><span class="n">u</span><span class="p">[</span><span class="n">j</span><span class="p">],</span> <span class="n">u</span><span class="p">[</span><span class="n">k</span><span class="p">]),</span> <span class="n">d</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s">&#39;r&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">))</span>
+		<span class="n">prefix</span><span class="o">=</span><span class="s">&#39;friends</span><span class="si">%s</span><span class="s">-</span><span class="si">%s</span><span class="s">_&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="s">&#39;1&#39;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">jackknife</span> <span class="k">else</span> <span class="s">&#39;&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">metric</span><span class="p">)</span>
+		<span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">prefix</span> <span class="o">+</span> <span class="s">&#39;cluster.pdf&#39;</span><span class="p">)</span>
+		<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+		<span class="k">print</span> <span class="s">&#39;creating plot... done&#39;</span>
+	
+	<span class="k">def</span> <span class="nf">draw_constrained</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Lmin</span><span class="p">,</span> <span class="n">priortransform</span><span class="p">,</span> <span class="n">loglikelihood</span><span class="p">,</span> <span class="n">previous</span><span class="p">,</span> <span class="n">ndim</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+		<span class="c"># previous is [[u, x, L], ...]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">iter</span> <span class="o">+=</span> <span class="mi">1</span>
+		<span class="n">rebuild</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">rebuild_every</span> <span class="o">==</span> <span class="mi">1</span>
+		<span class="k">if</span> <span class="n">rebuild</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">rebuild</span><span class="p">(</span><span class="n">previous</span><span class="p">,</span> <span class="n">ndim</span><span class="p">,</span> <span class="n">Lmin</span><span class="p">,</span> <span class="n">keepRadius</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">generator</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">generator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="n">ndim</span><span class="o">=</span><span class="n">ndim</span><span class="p">)</span>
+			<span class="c">#self.debug_plot(Lmin, priortransform, loglikelihood, previous, ndim)</span>
+		<span class="c">#self.debug(ndim)</span>
+		<span class="n">ntoaccept</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="n">ntotalsum</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+			<span class="k">for</span> <span class="n">u</span><span class="p">,</span> <span class="n">ntotal</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">generator</span><span class="p">:</span>
+				<span class="k">assert</span> <span class="p">(</span><span class="n">u</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span> <span class="ow">and</span> <span class="p">(</span><span class="n">u</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">(),</span> <span class="n">u</span>
+				<span class="n">ntotalsum</span> <span class="o">+=</span> <span class="n">ntotal</span>
+				
+				<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinter</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+					<span class="n">hints</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hinter</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
+					<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">hints</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+						<span class="c"># no way</span>
+						<span class="k">continue</span>
+					<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">hints</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+						<span class="c"># choose a random solution, by size</span>
+						<span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&quot;multiple solutions not implemented&quot;</span><span class="p">)</span>
+						<span class="n">hints</span> <span class="o">=</span> <span class="n">hints</span><span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randInt</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">hints</span><span class="p">))]</span>
+					<span class="k">else</span><span class="p">:</span>
+						<span class="n">hints</span> <span class="o">=</span> <span class="n">hints</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+				
+					<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="ow">in</span> <span class="n">hints</span><span class="p">:</span>
+						<span class="n">u</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">lo</span><span class="p">,</span> <span class="n">hi</span><span class="p">)</span>
+					<span class="k">if</span> <span class="ow">not</span> <span class="n">is_inside</span><span class="p">(</span><span class="n">u</span><span class="p">):</span>
+						<span class="c"># not sure if this is a good idea</span>
+						<span class="c"># it means we dont completely trust</span>
+						<span class="c"># the hinting function</span>
+						<span class="k">continue</span>
+				
+				<span class="n">x</span> <span class="o">=</span> <span class="n">priortransform</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
+				<span class="n">L</span> <span class="o">=</span> <span class="n">loglikelihood</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+				<span class="n">ntoaccept</span> <span class="o">+=</span> <span class="mi">1</span>
+				
+				<span class="k">if</span> <span class="n">L</span> <span class="o">&gt;</span> <span class="n">Lmin</span><span class="p">:</span>
+					<span class="c"># yay, we win</span>
+					<span class="k">if</span> <span class="n">ntotalsum</span> <span class="o">&gt;</span> <span class="mi">10000</span><span class="p">:</span> 
+						<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span> 
+							<span class="k">print</span> <span class="s">&#39;sampled </span><span class="si">%d</span><span class="s"> points, evaluated </span><span class="si">%d</span><span class="s"> &#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">ntotalsum</span><span class="p">,</span> <span class="n">ntoaccept</span><span class="p">)</span>
+							<span class="c">#self.debugplot(u)</span>
+					<span class="k">return</span> <span class="n">u</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">ntoaccept</span>
+				
+				<span class="c"># if running very inefficient, optimize clustering </span>
+				<span class="c">#     if we haven&#39;t done so at the start</span>
+				<span class="k">if</span> <span class="ow">not</span> <span class="n">rebuild</span> <span class="ow">and</span> <span class="n">ntoaccept</span> <span class="o">&gt;</span> <span class="mi">1000</span><span class="p">:</span>
+					<span class="c">#self.debugplot(u)</span>
+					<span class="k">break</span>
+			<span class="n">rebuild</span> <span class="o">=</span> <span class="bp">True</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">rebuild</span><span class="p">(</span><span class="n">previous</span><span class="p">,</span> <span class="n">ndim</span><span class="p">,</span> <span class="n">Lmin</span><span class="p">,</span> <span class="n">keepRadius</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+</div>
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&#39;__main__&#39;</span><span class="p">:</span>
+	<span class="n">friends</span> <span class="o">=</span> <span class="n">FriendsConstrainer</span><span class="p">(</span><span class="n">radial</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)</span>
+	
+	<span class="n">u</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mf">0.45</span><span class="p">,</span> <span class="mf">0.55</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+	<span class="n">ndim</span> <span class="o">=</span> <span class="mi">2</span>
+	<span class="n">friends</span><span class="o">.</span><span class="n">cluster</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">ndim</span><span class="o">=</span><span class="n">ndim</span><span class="p">)</span>
+	<span class="n">Lmin</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+	<span class="n">rv</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="mf">0.515</span><span class="p">,</span> <span class="mf">0.03</span><span class="p">)</span>
+	<span class="k">def</span> <span class="nf">priortransform</span><span class="p">(</span><span class="n">x</span><span class="p">):</span> <span class="k">return</span> <span class="n">x</span>
+	<span class="k">def</span> <span class="nf">loglikelihood</span><span class="p">(</span><span class="n">x</span><span class="p">):</span> <span class="k">return</span> <span class="n">rv</span><span class="o">.</span><span class="n">logpdf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+	<span class="n">previous</span> <span class="o">=</span> <span class="p">[]</span>
+	<span class="n">colors</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;r&#39;</span><span class="p">,</span> <span class="s">&#39;g&#39;</span><span class="p">,</span> <span class="s">&#39;orange&#39;</span><span class="p">]</span>
+	<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="s">&quot;dists&quot;</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span><span class="mi">4</span><span class="p">))</span>
+	<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="s">&quot;plane&quot;</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span><span class="mi">5</span><span class="p">))</span>
+	<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">u</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span> <span class="n">u</span><span class="p">[:,</span><span class="mi">1</span><span class="p">],</span> <span class="s">&#39;x&#39;</span><span class="p">)</span>
+	<span class="n">Lmins</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">]</span> <span class="c">#, 2.58]</span>
+	<span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="p">(</span><span class="n">Lmin</span><span class="p">,</span> <span class="n">color</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">Lmins</span><span class="p">)</span><span class="o">*</span><span class="n">ndim</span><span class="p">,</span> <span class="n">colors</span><span class="p">)):</span>
+		<span class="n">values</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">200</span><span class="p">):</span>
+			<span class="n">friends</span><span class="o">.</span><span class="n">iter</span> <span class="o">=</span> <span class="mi">4</span> <span class="c"># avoid rebuild</span>
+			<span class="n">u</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">ntoaccept</span> <span class="o">=</span> <span class="n">friends</span><span class="o">.</span><span class="n">draw_constrained</span><span class="p">(</span><span class="n">Lmin</span><span class="p">,</span> <span class="n">priortransform</span><span class="p">,</span> <span class="n">loglikelihood</span><span class="p">,</span> <span class="n">previous</span><span class="p">,</span> <span class="n">ndim</span><span class="p">)</span>
+			<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="s">&quot;plane&quot;</span><span class="p">)</span>
+			<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">u</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">u</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s">&#39;+&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">)</span>
+			<span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
+		<span class="n">values</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+		<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="s">&quot;dists&quot;</span><span class="p">)</span>
+		<span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ndim</span><span class="p">):</span>
+			<span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">ndim</span><span class="p">,</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+			<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s">&#39;Lmin={}, dim={}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">Lmin</span><span class="p">,</span> <span class="n">k</span><span class="p">))</span>
+			<span class="n">plt</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">values</span><span class="p">[:,</span><span class="n">k</span><span class="p">],</span> <span class="n">cumulative</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">normed</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> 
+				<span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">histtype</span><span class="o">=</span><span class="s">&#39;step&#39;</span><span class="p">)</span>
+	<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="s">&quot;plane&quot;</span><span class="p">)</span>
+	<span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s">&#39;friends_sampling_test.pdf&#39;</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s">&#39;tight&#39;</span><span class="p">)</span>
+	<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+	<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="s">&quot;dists&quot;</span><span class="p">)</span>
+	<span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s">&#39;friends_sampling_test_dists.pdf&#39;</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s">&#39;tight&#39;</span><span class="p">)</span>
+	<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+	
+	<span class="c"># another test: given a group of samples, assert that only neighbors are evaluated</span>
+	
+	<span class="n">r</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">400</span><span class="p">)</span>
+	<span class="n">phi</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">400</span><span class="p">)</span><span class="o">**</span><span class="mi">10</span> <span class="o">*</span> <span class="mi">2</span><span class="o">*</span><span class="n">numpy</span><span class="o">.</span><span class="n">pi</span>
+	<span class="n">u</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">transpose</span><span class="p">([</span><span class="mf">0.5</span> <span class="o">+</span> <span class="n">r</span><span class="o">*</span><span class="n">numpy</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">phi</span><span class="p">),</span> <span class="mf">0.5</span> <span class="o">+</span> <span class="n">r</span><span class="o">*</span><span class="n">numpy</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">phi</span><span class="p">)])</span>
+	<span class="n">friends</span><span class="o">.</span><span class="n">cluster</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">ndim</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+	<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">5</span><span class="p">))</span>
+	<span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+	<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">u</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span> <span class="n">u</span><span class="p">[:,</span><span class="mi">1</span><span class="p">],</span> <span class="s">&#39;x&#39;</span><span class="p">)</span>
+	<span class="n">suggested</span> <span class="o">=</span> <span class="p">[]</span>
+	<span class="k">def</span> <span class="nf">loglikelihood</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+		<span class="n">r</span> <span class="o">=</span> <span class="p">((</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">**</span><span class="mf">0.5</span>
+		<span class="c">#assert r &lt; 0.5</span>
+		<span class="c">#assert r &gt; 0.1</span>
+		<span class="n">suggested</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">r</span> <span class="o">&gt;</span> <span class="mf">0.2</span> <span class="ow">and</span> <span class="n">r</span> <span class="o">&lt;</span> <span class="mf">0.25</span><span class="p">:</span>
+			<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s">&#39;o&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s">&#39;green&#39;</span><span class="p">)</span>
+			<span class="k">return</span> <span class="mi">100</span>
+		<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s">&#39;o&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s">&#39;red&#39;</span><span class="p">)</span>
+		<span class="k">return</span> <span class="o">-</span><span class="mi">100</span>
+	
+	<span class="n">ndim</span> <span class="o">=</span> <span class="mi">2</span>
+	<span class="n">taken</span> <span class="o">=</span> <span class="p">[]</span>
+	<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
+		<span class="n">friends</span><span class="o">.</span><span class="n">iter</span> <span class="o">=</span> <span class="mi">4</span> <span class="c"># avoid rebuild</span>
+		<span class="n">u</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">ntoaccept</span> <span class="o">=</span> <span class="n">friends</span><span class="o">.</span><span class="n">draw_constrained</span><span class="p">(</span><span class="n">Lmin</span><span class="p">,</span> <span class="n">priortransform</span><span class="p">,</span> <span class="n">loglikelihood</span><span class="p">,</span> <span class="n">previous</span><span class="p">,</span> <span class="n">ndim</span><span class="p">)</span>
+		<span class="n">r</span> <span class="o">=</span> <span class="p">((</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">**</span><span class="mf">0.5</span>
+		<span class="n">taken</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+		<span class="k">print</span> <span class="s">&#39;suggested:&#39;</span><span class="p">,</span> <span class="n">u</span>
+	<span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+	<span class="n">plt</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">taken</span><span class="p">,</span> <span class="n">cumulative</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">normed</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> 
+			<span class="n">color</span><span class="o">=</span><span class="s">&#39;g&#39;</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">histtype</span><span class="o">=</span><span class="s">&#39;step&#39;</span><span class="p">)</span>
+	<span class="n">plt</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">suggested</span><span class="p">,</span> <span class="n">cumulative</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">normed</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> 
+			<span class="n">color</span><span class="o">=</span><span class="s">&#39;r&#39;</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">histtype</span><span class="o">=</span><span class="s">&#39;step&#39;</span><span class="p">)</span>
+	<span class="c">#x = numpy.linspace(0, 1, 400)</span>
+	<span class="c">#y = x**ndim - (x - min(suggested) / max(suggested))**ndim</span>
+	<span class="c">#y /= max(y)</span>
+	<span class="c">#plt.plot(x * (max(suggested) - min(suggested)) + min(suggested), y, &#39;--&#39;, color=&#39;grey&#39;)</span>
+	
+	<span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s">&#39;friends_sampling_test_sampling.pdf&#39;</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s">&#39;tight&#39;</span><span class="p">)</span>
+	<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+	
+	
+	
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">Nested Sampling 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013-2014, Johannes Buchner.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

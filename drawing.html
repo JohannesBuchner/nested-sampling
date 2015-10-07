@@ -1,0 +1,338 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Constrained Drawing Functions &mdash; Nested Sampling 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Nested Sampling 1.0 documentation" href="index.html" />
+    <link rel="prev" title="Benchmark/Test Suite" href="test.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="test.html" title="Benchmark/Test Suite"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">Nested Sampling 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="constrained-drawing-functions">
+<span id="constrained-draw"></span><h1>Constrained Drawing Functions<a class="headerlink" href="#constrained-drawing-functions" title="Permalink to this headline">¶</a></h1>
+<p>For the problem of drawing uniformly from the prior, given a minimum likelihood,
+these are the currently implemented methods:</p>
+<div class="contents local topic" id="contents">
+<ul class="simple">
+<li><a class="reference internal" href="#rejection-sampling" id="id1">Rejection sampling</a></li>
+<li><a class="reference internal" href="#module-nested_sampling.samplers.svm" id="id2">Support Vector Machines</a></li>
+<li><a class="reference internal" href="#module-nested_sampling.samplers.friends" id="id3">RadFriends/SupFriends</a></li>
+<li><a class="reference internal" href="#module-nested_sampling.samplers.mcmc" id="id4">Markov Chain Monte Carlo</a></li>
+<li><a class="reference internal" href="#module-nested_sampling.samplers.galilean" id="id5">RadFriends/Galilean and MCMC hybrid methods</a></li>
+<li><a class="reference internal" href="#constrained-hamiltonian-monte-carlo" id="id6">Constrained Hamiltonian Monte Carlo</a></li>
+</ul>
+</div>
+<div class="section" id="rejection-sampling">
+<h2><a class="toc-backref" href="#id1">Rejection sampling</a><a class="headerlink" href="#rejection-sampling" title="Permalink to this headline">¶</a></h2>
+<p>Check the source of this Constrainer for reference, and as a starting point to
+implementing your own method.</p>
+<dl class="class">
+<dt id="nested_sampling.samplers.rejection.RejectionConstrainer">
+<em class="property">class </em><tt class="descclassname">nested_sampling.samplers.rejection.</tt><tt class="descname">RejectionConstrainer</tt><a class="reference internal" href="_modules/nested_sampling/samplers/rejection.html#RejectionConstrainer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nested_sampling.samplers.rejection.RejectionConstrainer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Simplest draw function using rejection sampling.</p>
+<p>Guaranteed to yield uniform points <em>and</em> not to exclude any maxima. 
+Least efficient method.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-nested_sampling.samplers.svm">
+<span id="support-vector-machines"></span><h2><a class="toc-backref" href="#id2">Support Vector Machines</a><a class="headerlink" href="#module-nested_sampling.samplers.svm" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="nested_sampling.samplers.svm.SVMConstrainer">
+<em class="property">class </em><tt class="descclassname">nested_sampling.samplers.svm.</tt><tt class="descname">SVMConstrainer</tt><a class="reference internal" href="_modules/nested_sampling/samplers/svm.html#SVMConstrainer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nested_sampling.samplers.svm.SVMConstrainer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>This constrainer uses probabilistic Support Vector Machines classifier
+with Radial basis functions (sklearn.svm.NuSVC)
+to find a border separating live points and already discarded points.</p>
+<p>Then, points are filtered using this classifier. Only points matching
+the classifier are evaluated.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-nested_sampling.samplers.friends">
+<span id="radfriends-supfriends"></span><h2><a class="toc-backref" href="#id3">RadFriends/SupFriends</a><a class="headerlink" href="#module-nested_sampling.samplers.friends" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="nested_sampling.samplers.friends.FriendsConstrainer">
+<em class="property">class </em><tt class="descclassname">nested_sampling.samplers.friends.</tt><tt class="descname">FriendsConstrainer</tt><big>(</big><em>rebuild_every=50</em>, <em>radial=True</em>, <em>metric='euclidean'</em>, <em>jackknife=False</em>, <em>force_shrink=False</em>, <em>hinter=None</em>, <em>verbose=False</em><big>)</big><a class="reference internal" href="_modules/nested_sampling/samplers/friends.html#FriendsConstrainer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nested_sampling.samplers.friends.FriendsConstrainer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Rejection sampling pre-filtering method based on neighborhood to live points.</p>
+<p>&#8220;Distant&#8221; means in this implementation that the distance to a cluster member
+is large. 
+The maximum distance to a cluster is computed by considering each
+cluster member and its k nearest neighbors in turn, and 
+computing the maximum distance.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>rebuild_every</strong> &#8211; After how many iterations should the clustering
+distance be re-computed?</li>
+<li><strong>radial</strong> &#8211; if radial = True, then the normal euclidean distance is used.
+otherwise, the absolute coordinate difference in each dimension is used.</li>
+<li><strong>metric</strong> &#8211; metric to use. Use &#8216;chebyshev&#8217; for SupFriends, in which case then 
+the supremum norm is used. Use &#8216;euclidean&#8217; for RadFriends, via 
+the euclidean norm.</li>
+<li><strong>jackknife</strong> &#8211; if True, instead of leaving out a group of live points in
+the distance estimate, only one is left out in turn (jackknife resampling
+instead of bootstrap resampling).</li>
+<li><strong>force_shrink</strong> &#8211; if True, the distance can only decrease between sampling steps.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="nested_sampling.samplers.friends.FriendsConstrainer.are_inside_rect">
+<tt class="descname">are_inside_rect</tt><big>(</big><em>u</em><big>)</big><a class="reference internal" href="_modules/nested_sampling/samplers/friends.html#FriendsConstrainer.are_inside_rect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nested_sampling.samplers.friends.FriendsConstrainer.are_inside_rect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if the new points are near or inside one of our clusters</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="nested_sampling.samplers.friends.FriendsConstrainer.cluster">
+<tt class="descname">cluster</tt><big>(</big><em>u</em>, <em>ndim</em>, <em>keepRadius=False</em><big>)</big><a class="reference internal" href="_modules/nested_sampling/samplers/friends.html#FriendsConstrainer.cluster"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nested_sampling.samplers.friends.FriendsConstrainer.cluster" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="nested_sampling.samplers.friends.FriendsConstrainer.is_inside">
+<tt class="descname">is_inside</tt><big>(</big><em>u</em><big>)</big><a class="reference internal" href="_modules/nested_sampling/samplers/friends.html#FriendsConstrainer.is_inside"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nested_sampling.samplers.friends.FriendsConstrainer.is_inside" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if this new point is near or inside one of our clusters</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-nested_sampling.samplers.mcmc">
+<span id="markov-chain-monte-carlo"></span><h2><a class="toc-backref" href="#id4">Markov Chain Monte Carlo</a><a class="headerlink" href="#module-nested_sampling.samplers.mcmc" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="nested_sampling.samplers.mcmc.BaseProposal">
+<em class="property">class </em><tt class="descclassname">nested_sampling.samplers.mcmc.</tt><tt class="descname">BaseProposal</tt><big>(</big><em>adapt=False</em>, <em>scale=1.0</em><big>)</big><a class="reference internal" href="_modules/nested_sampling/samplers/mcmc.html#BaseProposal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nested_sampling.samplers.mcmc.BaseProposal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Base class for proposal function.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>scale</strong> &#8211; Scale of proposal</li>
+<li><strong>adapt</strong> &#8211; Adaptation rule to use for scale, when new_chain is called.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>If adapt is False, no adaptation is done. If adapt is &#8216;Sivia&#8217;, the rule
+of Sivia &amp; Skilling (2006) is used. If adapt is something else,
+a crude thresholding adaptation is used to gain ~50% acceptance.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="nested_sampling.samplers.mcmc.GaussProposal">
+<em class="property">class </em><tt class="descclassname">nested_sampling.samplers.mcmc.</tt><tt class="descname">GaussProposal</tt><big>(</big><em>adapt=False</em>, <em>scale=1.0</em><big>)</big><a class="reference internal" href="_modules/nested_sampling/samplers/mcmc.html#GaussProposal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nested_sampling.samplers.mcmc.GaussProposal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#nested_sampling.samplers.mcmc.BaseProposal" title="nested_sampling.samplers.mcmc.BaseProposal"><tt class="xref py py-class docutils literal"><span class="pre">nested_sampling.samplers.mcmc.BaseProposal</span></tt></a></p>
+<p>Symmetric gaussian proposal.</p>
+<p>&#64;see BaseProposal</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="nested_sampling.samplers.mcmc.MCMCConstrainer">
+<em class="property">class </em><tt class="descclassname">nested_sampling.samplers.mcmc.</tt><tt class="descname">MCMCConstrainer</tt><big>(</big><em>nsteps=200</em>, <em>proposer=MultiScaleProposal(loc=-4.5</em>, <em>scale=1.5</em>, <em>adapt=False)</em>, <em>nmaxsteps=10000</em><big>)</big><a class="reference internal" href="_modules/nested_sampling/samplers/mcmc.html#MCMCConstrainer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nested_sampling.samplers.mcmc.MCMCConstrainer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Markov chain Monte Carlo proposals using the Metropolis update: 
+Do a number of steps, while adhering to boundary.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="nested_sampling.samplers.mcmc.MultiScaleProposal">
+<em class="property">class </em><tt class="descclassname">nested_sampling.samplers.mcmc.</tt><tt class="descname">MultiScaleProposal</tt><big>(</big><em>loc=-4.5</em>, <em>scale=1.5</em>, <em>adapt=False</em><big>)</big><a class="reference internal" href="_modules/nested_sampling/samplers/mcmc.html#MultiScaleProposal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nested_sampling.samplers.mcmc.MultiScaleProposal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#nested_sampling.samplers.mcmc.BaseProposal" title="nested_sampling.samplers.mcmc.BaseProposal"><tt class="xref py py-class docutils literal"><span class="pre">nested_sampling.samplers.mcmc.BaseProposal</span></tt></a></p>
+<p>Proposal over multiple scales, inspired by DNest. 
+Uses the formula</p>
+<p><span class="math">\(x + n * 10^{l - s * u}\)</span></p>
+<p>where l is the location, s is the scale and u is a uniform variate,
+and n is a normal variate.</p>
+<p>&#64;see MultiScaleProposal</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-nested_sampling.samplers.galilean">
+<span id="radfriends-galilean-and-mcmc-hybrid-methods"></span><h2><a class="toc-backref" href="#id5">RadFriends/Galilean and MCMC hybrid methods</a><a class="headerlink" href="#module-nested_sampling.samplers.galilean" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="nested_sampling.samplers.galilean.GalileanRadFriendsConstrainer">
+<em class="property">class </em><tt class="descclassname">nested_sampling.samplers.galilean.</tt><tt class="descname">GalileanRadFriendsConstrainer</tt><big>(</big><em>nlive_points</em>, <em>ndim</em>, <em>velocity_scale=0.5</em>, <em>nsteps=20</em>, <em>plot=False</em><big>)</big><a class="reference internal" href="_modules/nested_sampling/samplers/galilean.html#GalileanRadFriendsConstrainer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nested_sampling.samplers.galilean.GalileanRadFriendsConstrainer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#nested_sampling.samplers.galilean.HybridRadFriendsConstrainer" title="nested_sampling.samplers.galilean.HybridRadFriendsConstrainer"><tt class="xref py py-class docutils literal"><span class="pre">nested_sampling.samplers.galilean.HybridRadFriendsConstrainer</span></tt></a></p>
+<p>Galilean Nested Sampling is a special case of Nested Sampling using Hamiltonian Monte Carlo.
+Here we use RadFriends to determine the reflection surfaces.</p>
+<dl class="method">
+<dt id="nested_sampling.samplers.galilean.GalileanRadFriendsConstrainer.are_inside_rect">
+<tt class="descname">are_inside_rect</tt><big>(</big><em>u</em><big>)</big><a class="headerlink" href="#nested_sampling.samplers.galilean.GalileanRadFriendsConstrainer.are_inside_rect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if the new points are near or inside one of our clusters</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="nested_sampling.samplers.galilean.GalileanRadFriendsConstrainer.is_inside">
+<tt class="descname">is_inside</tt><big>(</big><em>u</em><big>)</big><a class="headerlink" href="#nested_sampling.samplers.galilean.GalileanRadFriendsConstrainer.is_inside" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if this new point is near or inside one of our clusters</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="nested_sampling.samplers.galilean.GalileanRadFriendsConstrainer.reflect">
+<tt class="descname">reflect</tt><big>(</big><em>u</em>, <em>v</em><big>)</big><a class="reference internal" href="_modules/nested_sampling/samplers/galilean.html#GalileanRadFriendsConstrainer.reflect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nested_sampling.samplers.galilean.GalileanRadFriendsConstrainer.reflect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find reflection surface for line u + t*v, t&gt;0</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nested_sampling.samplers.galilean.HybridRadFriendsConstrainer">
+<em class="property">class </em><tt class="descclassname">nested_sampling.samplers.galilean.</tt><tt class="descname">HybridRadFriendsConstrainer</tt><big>(</big><em>nsteps=20</em>, <em>plot=False</em><big>)</big><a class="reference internal" href="_modules/nested_sampling/samplers/galilean.html#HybridRadFriendsConstrainer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nested_sampling.samplers.galilean.HybridRadFriendsConstrainer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Base class to use RadFriends (with enforced shrinking, JackKnife resampling) 
+in combination with local step sampling methods.</p>
+<dl class="method">
+<dt id="nested_sampling.samplers.galilean.HybridRadFriendsConstrainer.are_inside_rect">
+<tt class="descname">are_inside_rect</tt><big>(</big><em>u</em><big>)</big><a class="reference internal" href="_modules/nested_sampling/samplers/galilean.html#HybridRadFriendsConstrainer.are_inside_rect"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nested_sampling.samplers.galilean.HybridRadFriendsConstrainer.are_inside_rect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if the new points are near or inside one of our clusters</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="nested_sampling.samplers.galilean.HybridRadFriendsConstrainer.is_inside">
+<tt class="descname">is_inside</tt><big>(</big><em>u</em><big>)</big><a class="reference internal" href="_modules/nested_sampling/samplers/galilean.html#HybridRadFriendsConstrainer.is_inside"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nested_sampling.samplers.galilean.HybridRadFriendsConstrainer.is_inside" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if this new point is near or inside one of our clusters</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="nested_sampling.samplers.galilean.MCMCRadFriendsConstrainer">
+<em class="property">class </em><tt class="descclassname">nested_sampling.samplers.galilean.</tt><tt class="descname">MCMCRadFriendsConstrainer</tt><big>(</big><em>proposal_scale=3</em>, <em>nsteps=20</em>, <em>plot=False</em><big>)</big><a class="reference internal" href="_modules/nested_sampling/samplers/galilean.html#MCMCRadFriendsConstrainer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nested_sampling.samplers.galilean.MCMCRadFriendsConstrainer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#nested_sampling.samplers.galilean.HybridRadFriendsConstrainer" title="nested_sampling.samplers.galilean.HybridRadFriendsConstrainer"><tt class="xref py py-class docutils literal"><span class="pre">nested_sampling.samplers.galilean.HybridRadFriendsConstrainer</span></tt></a></p>
+<p>Markov Chain Monte Carlo sampling</p>
+<p>Here we use RadFriends to restrict the proposal distribution.</p>
+<dl class="method">
+<dt id="nested_sampling.samplers.galilean.MCMCRadFriendsConstrainer.are_inside_rect">
+<tt class="descname">are_inside_rect</tt><big>(</big><em>u</em><big>)</big><a class="headerlink" href="#nested_sampling.samplers.galilean.MCMCRadFriendsConstrainer.are_inside_rect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if the new points are near or inside one of our clusters</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="nested_sampling.samplers.galilean.MCMCRadFriendsConstrainer.is_inside">
+<tt class="descname">is_inside</tt><big>(</big><em>u</em><big>)</big><a class="headerlink" href="#nested_sampling.samplers.galilean.MCMCRadFriendsConstrainer.is_inside" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if this new point is near or inside one of our clusters</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="constrained-hamiltonian-monte-carlo">
+<h2><a class="toc-backref" href="#id6">Constrained Hamiltonian Monte Carlo</a><a class="headerlink" href="#constrained-hamiltonian-monte-carlo" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Constrained Drawing Functions</a><ul>
+<li><a class="reference internal" href="#rejection-sampling">Rejection sampling</a></li>
+<li><a class="reference internal" href="#module-nested_sampling.samplers.svm">Support Vector Machines</a></li>
+<li><a class="reference internal" href="#module-nested_sampling.samplers.friends">RadFriends/SupFriends</a></li>
+<li><a class="reference internal" href="#module-nested_sampling.samplers.mcmc">Markov Chain Monte Carlo</a></li>
+<li><a class="reference internal" href="#module-nested_sampling.samplers.galilean">RadFriends/Galilean and MCMC hybrid methods</a></li>
+<li><a class="reference internal" href="#constrained-hamiltonian-monte-carlo">Constrained Hamiltonian Monte Carlo</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="test.html"
+                        title="previous chapter">Benchmark/Test Suite</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/drawing.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="test.html" title="Benchmark/Test Suite"
+             >previous</a> |</li>
+        <li><a href="index.html">Nested Sampling 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013-2014, Johannes Buchner.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

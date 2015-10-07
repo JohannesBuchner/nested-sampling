@@ -1,0 +1,281 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>nested_sampling.nested_integrator &mdash; Nested Sampling 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Nested Sampling 1.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">Nested Sampling 1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for nested_sampling.nested_integrator</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Copyright: Johannes Buchner (C) 2013</span>
+
+<span class="sd">Modular, Pythonic Implementation of Nested Sampling</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">exp</span><span class="p">,</span> <span class="n">log</span><span class="p">,</span> <span class="n">log10</span><span class="p">,</span> <span class="n">pi</span>
+<span class="kn">import</span> <span class="nn">progressbar</span>
+<span class="kn">from</span> <span class="nn">adaptive_progress</span> <span class="kn">import</span> <span class="n">AdaptiveETA</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">logaddexp</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Conservative (over)estimation of remainder integral (namely, the live points). </span>
+<span class="sd">The maximum likelihood is multiplied by the remaining volume.</span>
+
+<span class="sd">:param sampler: Sampler</span>
+<span class="sd">:param logwidth: current point weight</span>
+<span class="sd">:param logVolremaining: current volume</span>
+<span class="sd">:param logZ: current evidence</span>
+
+<span class="sd">@return evidence contribution and uncertainty estimate</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="k">def</span> <span class="nf">conservative_estimator</span><span class="p">(</span><span class="n">sampler</span><span class="p">,</span> <span class="n">logwidth</span><span class="p">,</span> <span class="n">logVolremaining</span><span class="p">,</span> <span class="n">logZ</span><span class="p">):</span>
+	<span class="n">maxContribution</span> <span class="o">=</span> <span class="n">sampler</span><span class="o">.</span><span class="n">Lmax</span> <span class="o">+</span> <span class="n">logVolremaining</span>
+	<span class="n">logZup</span>  <span class="o">=</span> <span class="n">logaddexp</span><span class="p">(</span><span class="n">maxContribution</span><span class="p">,</span> <span class="n">logZ</span><span class="p">)</span>
+	<span class="k">return</span> <span class="n">maxContribution</span><span class="p">,</span> <span class="n">logZup</span> <span class="o">-</span> <span class="n">logZ</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Conservative (over)estimation of remainder integral (namely, the live points).</span>
+
+<span class="sd">The steps between the lowest and highest likelihood is integrated.</span>
+<span class="sd">The choice where the step is done (at the lower, higher value or the mid point</span>
+<span class="sd">gives a lower, upper and medium estimate. The medium estimate is returned.</span>
+<span class="sd">The distance to the upper/lower (maximum) is used as a conservative estimate </span>
+<span class="sd">of the uncertainty.</span>
+
+<span class="sd">:param sampler: Sampler</span>
+<span class="sd">:param logwidth: current point weight</span>
+<span class="sd">:param logVolremaining: current volume</span>
+<span class="sd">:param logZ: current evidence</span>
+
+<span class="sd">@return evidence contribution and uncertainty estimate</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="k">def</span> <span class="nf">integrate_remainder</span><span class="p">(</span><span class="n">sampler</span><span class="p">,</span> <span class="n">logwidth</span><span class="p">,</span> <span class="n">logVolremaining</span><span class="p">,</span> <span class="n">logZ</span><span class="p">):</span>
+	<span class="c"># logwidth remains the same now for each sample</span>
+	<span class="n">remainder</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">sampler</span><span class="o">.</span><span class="n">remainder</span><span class="p">())</span>
+	<span class="n">logV</span> <span class="o">=</span> <span class="n">logwidth</span>
+	<span class="n">L0</span> <span class="o">=</span> <span class="n">remainder</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span>
+	<span class="n">Ls</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">exp</span><span class="p">([</span><span class="n">Li</span> <span class="o">-</span> <span class="n">L0</span> <span class="k">for</span> <span class="n">ui</span><span class="p">,</span> <span class="n">xi</span><span class="p">,</span> <span class="n">Li</span> <span class="ow">in</span> <span class="n">remainder</span><span class="p">])</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		      x---   4</span>
+<span class="sd">		  x---       3</span>
+<span class="sd">	      x---           2</span>
+<span class="sd">	  x---               1</span>
+<span class="sd">	  |   |   |   |   |</span>
+
+
+<span class="sd">	  1 + 2 + 3 + 4</span>
+<span class="sd">	  2 + 3 + 4 + 4</span>
+<span class="sd">	  1 + 1 + 2 + 3</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+	<span class="c"># the positive edge is L2, L3, ... L-1, L-1</span>
+	<span class="c"># the average  edge is L1, L2, ... L-2, L-1</span>
+	<span class="c"># the negative edge is L1, L1, ... L-2, L-2</span>
+	<span class="n">Lmax</span> <span class="o">=</span> <span class="n">Ls</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">+</span> <span class="n">Ls</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+	<span class="n">Lmin</span> <span class="o">=</span> <span class="n">Ls</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">+</span> <span class="n">Ls</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+	<span class="n">logLmid</span> <span class="o">=</span> <span class="n">log</span><span class="p">(</span><span class="n">Ls</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span> <span class="o">+</span> <span class="n">L0</span>
+	
+	<span class="c">#print &#39;Lmax, Lmin:&#39;, Lmax, Lmin, Lmax - Lmin</span>
+	<span class="c">#print &#39;Lmid:&#39;, logLmid</span>
+	<span class="c">#logZ2 = -1e300</span>
+	<span class="c">#for ui, xi, Li in remainder:</span>
+	<span class="c">#	logZ2 = logaddexp(logZ2, Li)</span>
+	<span class="c">#logZ2 = logaddexp(logZ2 + logwidth, logZ)</span>
+	<span class="c">#logZ2 = logZ</span>
+	<span class="c">#for ui, xi, Li in remainder:</span>
+	<span class="c">#	logZ2 = logaddexp(logZ2, logwidth + Li)</span>
+	
+	<span class="c">#logZerr = Lerr + logV</span>
+	<span class="c">#print &#39;logZ:&#39;, logZ, logZerr</span>
+	<span class="n">logZmid</span> <span class="o">=</span> <span class="n">logaddexp</span><span class="p">(</span><span class="n">logZ</span><span class="p">,</span> <span class="n">logV</span> <span class="o">+</span> <span class="n">logLmid</span><span class="p">)</span>
+	<span class="n">logZup</span>  <span class="o">=</span> <span class="n">logaddexp</span><span class="p">(</span><span class="n">logZ</span><span class="p">,</span> <span class="n">logV</span> <span class="o">+</span> <span class="n">log</span><span class="p">(</span><span class="n">Lmax</span><span class="p">)</span> <span class="o">+</span> <span class="n">L0</span><span class="p">)</span>
+	<span class="n">logZlo</span>  <span class="o">=</span> <span class="n">logaddexp</span><span class="p">(</span><span class="n">logZ</span><span class="p">,</span> <span class="n">logV</span> <span class="o">+</span> <span class="n">log</span><span class="p">(</span><span class="n">Lmin</span><span class="p">)</span> <span class="o">+</span> <span class="n">L0</span><span class="p">)</span>
+	<span class="n">logZerr</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">logZup</span> <span class="o">-</span> <span class="n">logZmid</span><span class="p">,</span> <span class="n">logZmid</span> <span class="o">-</span> <span class="n">logZlo</span><span class="p">)</span>
+	<span class="c">#print &#39;Z: %.3f [%.3f] -&gt; %.3f + %.3f - %.3f -&gt; %.3f&#39; % (logZ, logZ2, logLmid + logV, logZup, logZlo, logZerr)</span>
+	<span class="k">return</span> <span class="n">logV</span> <span class="o">+</span> <span class="n">logLmid</span><span class="p">,</span> <span class="n">logZerr</span>
+
+<span class="c">#integrate_remainder = conservative_estimator</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Performs the Nested Sampling integration by calling the *sampler* multiple times</span>
+<span class="sd">until the *tolerance* is reached, or the maximum number of likelihood evaluations</span>
+<span class="sd">is exceeded.</span>
+
+<span class="sd">:param sampler: Sampler</span>
+<span class="sd">:param tolerance: uncertainty in log Z to compute to</span>
+<span class="sd">:param max_samples: maximum number of likelihood evaluations (None for no limit)</span>
+
+<span class="sd">@return dictionary containing the keys</span>
+
+<span class="sd">  logZ, logZerr: log evidence and uncertainty, </span>
+<span class="sd">  samples: all obtained samples,</span>
+<span class="sd">  weights: posterior samples: </span>
+<span class="sd">  	list of prior coordinates, transformed coordinates, likelihood value </span>
+<span class="sd">  	and weight</span>
+<span class="sd">  information: information H</span>
+<span class="sd">  niterations: number of nested sampling iterations</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="nested_integrator"><a class="viewcode-back" href="../../integrator.html#nested_sampling.nested_integrator.nested_integrator">[docs]</a><span class="k">def</span> <span class="nf">nested_integrator</span><span class="p">(</span><span class="n">sampler</span><span class="p">,</span> <span class="n">tolerance</span> <span class="o">=</span> <span class="mf">0.01</span><span class="p">,</span> <span class="n">max_samples</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+	<span class="n">logVolremaining</span> <span class="o">=</span> <span class="mi">0</span>
+	<span class="n">logwidth</span> <span class="o">=</span> <span class="n">log</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mf">1.</span> <span class="o">/</span> <span class="n">sampler</span><span class="o">.</span><span class="n">nlive_points</span><span class="p">))</span>
+	<span class="n">weights</span> <span class="o">=</span> <span class="p">[]</span> <span class="c">#[-1e300, 1]]</span>
+	
+	<span class="n">widgets</span> <span class="o">=</span> <span class="p">[</span><span class="n">progressbar</span><span class="o">.</span><span class="n">Counter</span><span class="p">(</span><span class="s">&#39;</span><span class="si">%f</span><span class="s">&#39;</span><span class="p">),</span>
+		<span class="n">progressbar</span><span class="o">.</span><span class="n">Bar</span><span class="p">(),</span> <span class="n">progressbar</span><span class="o">.</span><span class="n">Percentage</span><span class="p">(),</span> <span class="n">AdaptiveETA</span><span class="p">()]</span>
+	<span class="n">pbar</span> <span class="o">=</span> <span class="n">progressbar</span><span class="o">.</span><span class="n">ProgressBar</span><span class="p">(</span><span class="n">widgets</span> <span class="o">=</span> <span class="n">widgets</span><span class="p">)</span>
+	
+	<span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+	<span class="n">ui</span><span class="p">,</span> <span class="n">xi</span><span class="p">,</span> <span class="n">Li</span> <span class="o">=</span> <span class="n">sampler</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+	<span class="n">wi</span> <span class="o">=</span> <span class="n">logwidth</span> <span class="o">+</span> <span class="n">Li</span>
+	<span class="n">logZ</span> <span class="o">=</span> <span class="n">wi</span>
+	<span class="n">H</span> <span class="o">=</span> <span class="n">Li</span> <span class="o">-</span> <span class="n">logZ</span>
+	<span class="n">pbar</span><span class="o">.</span><span class="n">currval</span> <span class="o">=</span> <span class="n">i</span>
+	<span class="n">pbar</span><span class="o">.</span><span class="n">maxval</span> <span class="o">=</span> <span class="n">sampler</span><span class="o">.</span><span class="n">nlive_points</span>
+	<span class="n">pbar</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+	<span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+		<span class="n">i</span> <span class="o">=</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span>
+		<span class="n">logwidth</span> <span class="o">=</span> <span class="n">log</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mf">1.</span> <span class="o">/</span> <span class="n">sampler</span><span class="o">.</span><span class="n">nlive_points</span><span class="p">))</span> <span class="o">+</span> <span class="n">logVolremaining</span>
+		<span class="n">logVolremaining</span> <span class="o">-=</span> <span class="mf">1.</span> <span class="o">/</span> <span class="n">sampler</span><span class="o">.</span><span class="n">nlive_points</span>
+		
+		<span class="n">weights</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">ui</span><span class="p">,</span> <span class="n">xi</span><span class="p">,</span> <span class="n">Li</span><span class="p">,</span> <span class="n">logwidth</span><span class="p">])</span>
+		
+		<span class="n">logZerr</span> <span class="o">=</span> <span class="p">(</span><span class="n">H</span> <span class="o">/</span> <span class="n">sampler</span><span class="o">.</span><span class="n">nlive_points</span><span class="p">)</span><span class="o">**</span><span class="mf">0.5</span>
+		
+		<span class="c">#maxContribution = sampler.Lmax + logVolremaining</span>
+		<span class="c">#minContribution = Li + logVolremaining</span>
+		<span class="c">#midContribution = logaddexp(maxContribution, minContribution)</span>
+		<span class="c">#logZup  = logaddexp(maxContribution, logZ)</span>
+		<span class="c">#logZmid = logaddexp(midContribution, logZ)</span>
+		<span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+		
+		<span class="c"># expected number of iterations:</span>
+		<span class="n">i_final</span> <span class="o">=</span> <span class="o">-</span><span class="n">sampler</span><span class="o">.</span><span class="n">nlive_points</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span><span class="n">sampler</span><span class="o">.</span><span class="n">Lmax</span> <span class="o">+</span> <span class="n">log</span><span class="p">(</span><span class="n">exp</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">tolerance</span> <span class="o">-</span> <span class="n">logZerr</span><span class="p">,</span> <span class="n">logZerr</span> <span class="o">/</span> <span class="mf">100.</span><span class="p">)</span> <span class="o">+</span> <span class="n">logZ</span><span class="p">)</span> <span class="o">-</span> <span class="n">exp</span><span class="p">(</span><span class="n">logZ</span><span class="p">)))</span>
+		<span class="n">pbar</span><span class="o">.</span><span class="n">maxval</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">i_final</span><span class="p">),</span> <span class="n">i</span><span class="o">+</span><span class="mi">100000</span><span class="p">)</span>
+		<span class="c">#logmaxContribution = logZup - logZ</span>
+		<span class="n">remainderZ</span><span class="p">,</span> <span class="n">remainderZerr</span> <span class="o">=</span> <span class="n">integrate_remainder</span><span class="p">(</span><span class="n">sampler</span><span class="p">,</span> <span class="n">logwidth</span><span class="p">,</span> <span class="n">logVolremaining</span><span class="p">,</span> <span class="n">logZ</span><span class="p">)</span>
+		
+		<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">sampler</span><span class="o">.</span><span class="n">nlive_points</span><span class="p">:</span>
+			<span class="c"># tolerance</span>
+			<span class="n">total_error</span> <span class="o">=</span> <span class="n">logZerr</span> <span class="o">+</span> <span class="n">remainderZerr</span>
+			<span class="c">#total_error = logZerr + logmaxContribution</span>
+			<span class="k">if</span> <span class="n">max_samples</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="nb">int</span><span class="p">(</span><span class="n">max_samples</span><span class="p">)</span> <span class="o">&lt;</span> <span class="nb">int</span><span class="p">(</span><span class="n">sampler</span><span class="o">.</span><span class="n">ndraws</span><span class="p">):</span>
+				<span class="n">pbar</span><span class="o">.</span><span class="n">finish</span><span class="p">()</span>
+				<span class="k">print</span> <span class="s">&#39;maximum number of samples reached&#39;</span>
+				<span class="k">break</span>
+			<span class="k">if</span> <span class="n">total_error</span> <span class="o">&lt;</span> <span class="n">tolerance</span><span class="p">:</span>
+				<span class="n">pbar</span><span class="o">.</span><span class="n">finish</span><span class="p">()</span>
+				<span class="k">print</span> <span class="s">&#39;tolerance reached:&#39;</span><span class="p">,</span> <span class="n">total_error</span><span class="p">,</span> <span class="n">logZerr</span><span class="p">,</span> <span class="n">remainderZerr</span>
+				<span class="k">break</span>
+			<span class="c"># we want to make maxContribution as small as possible</span>
+			<span class="c">#   but if it becomes 10% of logZerr, that is enough</span>
+			<span class="k">if</span> <span class="n">remainderZerr</span> <span class="o">&lt;</span> <span class="n">logZerr</span> <span class="o">/</span> <span class="mf">10.</span><span class="p">:</span>
+				<span class="n">pbar</span><span class="o">.</span><span class="n">finish</span><span class="p">()</span>
+				<span class="k">print</span> <span class="s">&#39;tolerance will not improve: remainder error (</span><span class="si">%.3f</span><span class="s">) is much smaller than systematic errors (</span><span class="si">%.3f</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">logZerr</span><span class="p">,</span> <span class="n">remainderZerr</span><span class="p">)</span>
+				<span class="k">break</span>
+		
+		<span class="n">widgets</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="s">&#39;|</span><span class="si">%d</span><span class="s">/</span><span class="si">%d</span><span class="s"> samples+</span><span class="si">%d</span><span class="s">/</span><span class="si">%d</span><span class="s">|lnZ = </span><span class="si">%.2f</span><span class="s"> +- </span><span class="si">%.3f</span><span class="s"> + </span><span class="si">%.3f</span><span class="s">|L=</span><span class="si">%.2e</span><span class="s"> @ </span><span class="si">%s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span>
+			<span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">pbar</span><span class="o">.</span><span class="n">maxval</span><span class="p">,</span> <span class="n">sampler</span><span class="o">.</span><span class="n">nlive_points</span><span class="p">,</span> <span class="n">sampler</span><span class="o">.</span><span class="n">ndraws</span><span class="p">,</span> <span class="n">logaddexp</span><span class="p">(</span><span class="n">logZ</span><span class="p">,</span> <span class="n">remainderZ</span><span class="p">),</span> <span class="n">logZerr</span><span class="p">,</span> <span class="n">remainderZerr</span><span class="p">,</span> <span class="n">Li</span><span class="p">,</span>
+			<span class="n">numpy</span><span class="o">.</span><span class="n">array_str</span><span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">max_line_width</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="mi">4</span><span class="p">))</span>
+		<span class="n">ui</span><span class="p">,</span> <span class="n">xi</span><span class="p">,</span> <span class="n">Li</span> <span class="o">=</span> <span class="n">sampler</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+		<span class="n">wi</span> <span class="o">=</span> <span class="n">logwidth</span> <span class="o">+</span> <span class="n">Li</span>
+		<span class="n">logZnew</span> <span class="o">=</span> <span class="n">logaddexp</span><span class="p">(</span><span class="n">logZ</span><span class="p">,</span> <span class="n">wi</span><span class="p">)</span>
+		<span class="n">H</span> <span class="o">=</span> <span class="n">exp</span><span class="p">(</span><span class="n">wi</span> <span class="o">-</span> <span class="n">logZnew</span><span class="p">)</span> <span class="o">*</span> <span class="n">Li</span> <span class="o">+</span> <span class="n">exp</span><span class="p">(</span><span class="n">logZ</span> <span class="o">-</span> <span class="n">logZnew</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">H</span> <span class="o">+</span> <span class="n">logZ</span><span class="p">)</span> <span class="o">-</span> <span class="n">logZnew</span>
+		<span class="n">logZ</span> <span class="o">=</span> <span class="n">logZnew</span>
+	
+	<span class="c"># not needed for integral, but for posterior samples, otherwise there</span>
+	<span class="c"># is a hole in the most likely parameter ranges.</span>
+	<span class="n">remainderZ</span><span class="p">,</span> <span class="n">remainderZerr</span> <span class="o">=</span> <span class="n">integrate_remainder</span><span class="p">(</span><span class="n">sampler</span><span class="p">,</span> <span class="n">logwidth</span><span class="p">,</span> <span class="n">logVolremaining</span><span class="p">,</span> <span class="n">logZ</span><span class="p">)</span>
+	<span class="n">weights</span> <span class="o">+=</span> <span class="p">[[</span><span class="n">ui</span><span class="p">,</span> <span class="n">xi</span><span class="p">,</span> <span class="n">Li</span><span class="p">,</span> <span class="n">logwidth</span><span class="p">]</span> <span class="k">for</span> <span class="n">ui</span><span class="p">,</span> <span class="n">xi</span><span class="p">,</span> <span class="n">Li</span> <span class="ow">in</span> <span class="n">sampler</span><span class="o">.</span><span class="n">remainder</span><span class="p">()]</span>
+	<span class="n">logZerr</span> <span class="o">+=</span> <span class="n">remainderZerr</span>
+	<span class="n">logZ</span> <span class="o">=</span> <span class="n">logaddexp</span><span class="p">(</span><span class="n">logZ</span><span class="p">,</span> <span class="n">remainderZ</span><span class="p">)</span>
+	
+	<span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">logZ</span><span class="o">=</span><span class="n">logZ</span><span class="p">,</span> <span class="n">logZerr</span><span class="o">=</span><span class="n">logZerr</span><span class="p">,</span> 
+		<span class="n">samples</span><span class="o">=</span><span class="n">sampler</span><span class="o">.</span><span class="n">samples</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">,</span> <span class="n">information</span><span class="o">=</span><span class="n">H</span><span class="p">,</span>
+		<span class="n">niterations</span><span class="o">=</span><span class="n">i</span><span class="p">)</span>
+</div>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="n">nested_integrator</span><span class="p">]</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">Nested Sampling 1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013-2014, Johannes Buchner.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

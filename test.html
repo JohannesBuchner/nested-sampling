@@ -1,0 +1,195 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Benchmark/Test Suite &mdash; Nested Sampling 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Nested Sampling 1.0 documentation" href="index.html" />
+    <link rel="next" title="Constrained Drawing Functions" href="drawing.html" />
+    <link rel="prev" title="Nested Sampling Integration" href="integrator.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="drawing.html" title="Constrained Drawing Functions"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="integrator.html" title="Nested Sampling Integration"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">Nested Sampling 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="benchmark-test-suite">
+<h1>Benchmark/Test Suite<a class="headerlink" href="#benchmark-test-suite" title="Permalink to this headline">¶</a></h1>
+<p>The benchmark runs the implemented algorithms against a number of test problems,
+and ranks them, after evaluating 10 runs with different seeds, by</p>
+<ol class="arabic simple">
+<li>correctness (tolerance of <span class="math">\(\Delta Z &lt; 0.1\)</span> in accuracy) is fulfilled</li>
+<li>claimed accuracy does not overestimate actual accuracy</li>
+<li>number of likelihood evaluations</li>
+</ol>
+<p>Following the Benchmark, one may choose the right algorithm for a problem
+according to characteristics, such as</p>
+<ul class="simple">
+<li>unimodal vs multimodal</li>
+<li>low-dimensional (&lt;7), medium-dimensional (7-20), high-dimensional (30-1000)</li>
+<li>simple peak shape vs peculiar shapes (e.g. bananas, funnels, multiple scales in modes)</li>
+</ul>
+<div class="section" id="algorithms-available">
+<h2>Algorithms available<a class="headerlink" href="#algorithms-available" title="Permalink to this headline">¶</a></h2>
+<p>All algorithms implemented in the <a class="reference internal" href="index.html"><em>python package</em></a> are available.
+To add your own algorithm, add a if-clause in <cite>testsuite/algorithms/nest.py</cite>.</p>
+<p>Additionally, the following algorithms are evaluated in the benchmark:</p>
+<ul class="simple">
+<li>Suave (through PyCuba)</li>
+<li>Divonne (through PyCuba)</li>
+<li>Cuhre (through PyCuba)</li>
+<li>Vegas (through PyCuba)</li>
+<li>MultiNest (through PyMultiNest)</li>
+</ul>
+</div>
+<div class="section" id="running-the-test-suite">
+<h2>Running the Test Suite<a class="headerlink" href="#running-the-test-suite" title="Permalink to this headline">¶</a></h2>
+<p>To run all the algorithms against all the problems, run:</p>
+<div class="highlight-python"><div class="highlight"><pre>$ cd testsuite
+$ mkdir -p output &amp;&amp; cd output
+$ PYTHONPATH=../../ python ../testbase.py
+</pre></div>
+</div>
+<p>This ensures you are using the current source of the nested sampling python
+package.</p>
+</div>
+<div class="section" id="parallel-execution">
+<h2>Parallel execution<a class="headerlink" href="#parallel-execution" title="Permalink to this headline">¶</a></h2>
+<p>Parallel execution using multiple threads can be enabled by
+setting the environment variable PARALLEL=1.</p>
+</div>
+<div class="section" id="partially-running-the-test-suite">
+<h2>Partially running the Test Suite<a class="headerlink" href="#partially-running-the-test-suite" title="Permalink to this headline">¶</a></h2>
+<p>Create a algorithm exclusion file named skip_algorithms, which contains
+regular expressions on the names of algorithms to skip. Example:</p>
+<div class="highlight-python"><div class="highlight"><pre>cuba.*
+multinest.*
+svm
+</pre></div>
+</div>
+<p>Create a problem exclusion file named skip_problems, which contains
+regular expressions on the names of problems to skip. Example:</p>
+<div class="highlight-python"><div class="highlight"><pre>gauss
+tilted
+loggamma[^_]
+.*10.*
+</pre></div>
+</div>
+<p>As before, run the test suite, but with <cite>partialtestbase.py</cite></p>
+<div class="highlight-python"><div class="highlight"><pre>$ cd testsuite
+$ mkdir -p output &amp;&amp; cd output
+$ PYTHONPATH=../../ python ../partialtestbase.py
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Benchmark/Test Suite</a><ul>
+<li><a class="reference internal" href="#algorithms-available">Algorithms available</a></li>
+<li><a class="reference internal" href="#running-the-test-suite">Running the Test Suite</a></li>
+<li><a class="reference internal" href="#parallel-execution">Parallel execution</a></li>
+<li><a class="reference internal" href="#partially-running-the-test-suite">Partially running the Test Suite</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="integrator.html"
+                        title="previous chapter">Nested Sampling Integration</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="drawing.html"
+                        title="next chapter">Constrained Drawing Functions</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/test.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="drawing.html" title="Constrained Drawing Functions"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="integrator.html" title="Nested Sampling Integration"
+             >previous</a> |</li>
+        <li><a href="index.html">Nested Sampling 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013-2014, Johannes Buchner.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

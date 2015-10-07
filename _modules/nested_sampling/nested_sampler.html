@@ -1,0 +1,186 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>nested_sampling.nested_sampler &mdash; Nested Sampling 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Nested Sampling 1.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">Nested Sampling 1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for nested_sampling.nested_sampler</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Copyright: Johannes Buchner (C) 2013</span>
+
+<span class="sd">Modular, Pythonic Implementation of Nested Sampling</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">exp</span><span class="p">,</span> <span class="n">log</span><span class="p">,</span> <span class="n">log10</span><span class="p">,</span> <span class="n">pi</span>
+<span class="kn">import</span> <span class="nn">progressbar</span>
+
+<div class="viewcode-block" id="NestedSampler"><a class="viewcode-back" href="../../integrator.html#nested_sampling.nested_sampler.NestedSampler">[docs]</a><span class="k">class</span> <span class="nc">NestedSampler</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	Samples points, always replacing the worst live point, forever.</span>
+<span class="sd">	</span>
+<span class="sd">	This implementation always removes and replaces one point (r=1),</span>
+<span class="sd">	and does so linearly (no parallelisation).</span>
+<span class="sd">	</span>
+<span class="sd">	This class is implemented as an iterator.</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">priortransform</span><span class="p">,</span> <span class="n">loglikelihood</span><span class="p">,</span> <span class="n">draw_constrained</span><span class="p">,</span> 
+			<span class="n">ndim</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">nlive_points</span> <span class="o">=</span> <span class="mi">200</span><span class="p">,</span> <span class="n">draw_global_uniform</span> <span class="o">=</span> <span class="bp">None</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">nlive_points</span> <span class="o">=</span> <span class="n">nlive_points</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">priortransform</span> <span class="o">=</span> <span class="n">priortransform</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">loglikelihood</span> <span class="o">=</span> <span class="n">loglikelihood</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">draw_constrained</span> <span class="o">=</span> <span class="n">draw_constrained</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">samples</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">ndim</span> <span class="o">=</span> <span class="n">ndim</span>
+		<span class="k">if</span> <span class="n">ndim</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">draw_global_uniform</span> <span class="o">=</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">ndim</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="n">ArgumentError</span><span class="p">(</span><span class="s">&quot;either pass ndim or draw_global_uniform&quot;</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">draw_global_uniform</span> <span class="o">=</span> <span class="n">draw_global_uniform</span>
+		<span class="c"># draw N starting points from prior</span>
+		<span class="n">live_pointsu</span> <span class="o">=</span> <span class="p">[</span><span class="bp">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">nlive_points</span>
+		<span class="n">live_pointsx</span> <span class="o">=</span> <span class="p">[</span><span class="bp">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">nlive_points</span>
+		<span class="n">live_pointsL</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">nlive_points</span><span class="p">)</span>
+		<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nlive_points</span><span class="p">):</span>
+			<span class="n">u</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">draw_global_uniform</span><span class="p">()</span>
+			<span class="n">x</span> <span class="o">=</span> <span class="n">priortransform</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
+			<span class="n">L</span> <span class="o">=</span> <span class="n">loglikelihood</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+			<span class="n">live_pointsu</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">live_pointsx</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">live_pointsL</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">u</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">L</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">u</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">L</span><span class="p">])</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">live_pointsu</span> <span class="o">=</span> <span class="n">live_pointsu</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">live_pointsx</span> <span class="o">=</span> <span class="n">live_pointsx</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">live_pointsL</span> <span class="o">=</span> <span class="n">live_pointsL</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">Lmax</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">live_pointsL</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">ndraws</span> <span class="o">=</span> <span class="n">nlive_points</span>
+	
+	<span class="k">def</span> <span class="nf">__next__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="n">live_pointsu</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">live_pointsu</span>
+		<span class="n">live_pointsx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">live_pointsx</span>
+		<span class="n">live_pointsL</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">live_pointsL</span>
+		<span class="c"># select worst point</span>
+		<span class="n">i</span> <span class="o">=</span> <span class="n">live_pointsL</span><span class="o">.</span><span class="n">argmin</span><span class="p">()</span>
+		<span class="n">ui</span> <span class="o">=</span> <span class="n">live_pointsu</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+		<span class="n">xi</span> <span class="o">=</span> <span class="n">live_pointsx</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+		<span class="n">Li</span> <span class="o">=</span> <span class="n">live_pointsL</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+		
+		<span class="c"># choose random </span>
+		<span class="n">k</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nlive_points</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">k</span> <span class="o">&gt;=</span> <span class="n">i</span><span class="p">:</span> <span class="c"># don&#39;t choose the same point</span>
+			<span class="n">k</span> <span class="o">+=</span> <span class="mi">1</span>
+		
+		<span class="c"># find replacement</span>
+		<span class="n">uj</span><span class="p">,</span> <span class="n">xj</span><span class="p">,</span> <span class="n">Lj</span><span class="p">,</span> <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">draw_constrained</span><span class="p">(</span>
+			<span class="n">Lmin</span><span class="o">=</span><span class="n">Li</span><span class="p">,</span> 
+			<span class="n">priortransform</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">priortransform</span><span class="p">,</span> 
+			<span class="n">loglikelihood</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loglikelihood</span><span class="p">,</span> 
+			<span class="n">previous</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">,</span>
+			<span class="n">ndim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ndim</span><span class="p">,</span>
+			<span class="n">draw_global_uniform</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">draw_global_uniform</span><span class="p">,</span>
+			<span class="n">startu</span> <span class="o">=</span> <span class="n">live_pointsu</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> 
+			<span class="n">startx</span> <span class="o">=</span> <span class="n">live_pointsx</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> 
+			<span class="n">startL</span> <span class="o">=</span> <span class="n">live_pointsL</span><span class="p">[</span><span class="n">k</span><span class="p">],</span>
+			<span class="n">starti</span> <span class="o">=</span> <span class="n">i</span><span class="p">)</span>
+		
+		<span class="n">live_pointsu</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">uj</span>
+		<span class="n">live_pointsx</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">xj</span>
+		<span class="n">live_pointsL</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">Lj</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">Lmax</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">Lj</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Lmax</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">uj</span><span class="p">,</span> <span class="n">xj</span><span class="p">,</span> <span class="n">Lj</span><span class="p">])</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">ndraws</span> <span class="o">+=</span> <span class="nb">int</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+		<span class="k">return</span> <span class="n">ui</span><span class="p">,</span> <span class="n">xi</span><span class="p">,</span> <span class="n">Li</span>
+	<span class="k">def</span> <span class="nf">remainder</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="n">indices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">live_pointsL</span><span class="o">.</span><span class="n">argsort</span><span class="p">()</span>
+		<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">:</span>
+			<span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">live_pointsu</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">live_pointsx</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">live_pointsL</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+	<span class="k">def</span> <span class="nf">next</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__next__</span><span class="p">()</span>
+	<span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="k">while</span> <span class="bp">True</span><span class="p">:</span> <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">__next__</span><span class="p">()</span>
+		</div>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="n">NestedSampler</span><span class="p">]</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">Nested Sampling 1.0 documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013-2014, Johannes Buchner.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

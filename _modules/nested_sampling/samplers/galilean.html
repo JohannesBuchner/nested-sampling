@@ -1,0 +1,656 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>nested_sampling.samplers.galilean &mdash; Nested Sampling 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Nested Sampling 1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">Nested Sampling 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for nested_sampling.samplers.galilean</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">scipy</span><span class="o">,</span> <span class="nn">scipy.stats</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">exp</span><span class="p">,</span> <span class="n">log</span><span class="p">,</span> <span class="n">log10</span><span class="p">,</span> <span class="n">pi</span><span class="p">,</span> <span class="n">cos</span><span class="p">,</span> <span class="n">sin</span><span class="p">,</span> <span class="n">dot</span><span class="p">,</span> <span class="n">vdot</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">from</span> <span class="nn">numpy.linalg</span> <span class="kn">import</span> <span class="n">norm</span>
+<span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+<span class="kn">from</span> <span class="nn">nested_sampling.clustering.neighbors</span> <span class="kn">import</span> <span class="n">find_maxdistance</span><span class="p">,</span> <span class="n">find_rdistance</span><span class="p">,</span> <span class="n">initial_rdistance_guess</span><span class="p">,</span> <span class="n">nearest_rdistance_guess</span>
+<span class="kn">import</span> <span class="nn">operator</span>
+<span class="n">getfirst</span> <span class="o">=</span> <span class="n">operator</span><span class="o">.</span><span class="n">itemgetter</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">random_unit_vector</span><span class="p">(</span><span class="n">ndim</span><span class="p">):</span>
+	<span class="n">v</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">ndim</span><span class="p">)</span>
+	<span class="n">v</span> <span class="o">/=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+	<span class="k">return</span> <span class="n">v</span>
+
+<div class="viewcode-block" id="HybridRadFriendsConstrainer"><a class="viewcode-back" href="../../../drawing.html#nested_sampling.samplers.galilean.HybridRadFriendsConstrainer">[docs]</a><span class="k">class</span> <span class="nc">HybridRadFriendsConstrainer</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	Base class to use RadFriends (with enforced shrinking, JackKnife resampling) </span>
+<span class="sd">	in combination with local step sampling methods.</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nsteps</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span> <span class="n">plot</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">sampler</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">phase</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">ndirect</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">ndirect_accepts</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">nfriends</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">nfriends_accepts</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">nsteps</span> <span class="o">=</span> <span class="n">nsteps</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">region</span> <span class="o">=</span> <span class="bp">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">plot</span> <span class="o">=</span> <span class="n">plot</span>
+
+<div class="viewcode-block" id="HybridRadFriendsConstrainer.is_inside"><a class="viewcode-back" href="../../../drawing.html#nested_sampling.samplers.galilean.HybridRadFriendsConstrainer.is_inside">[docs]</a>	<span class="k">def</span> <span class="nf">is_inside</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Check if this new point is near or inside one of our clusters</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">ndim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
+		<span class="n">ulow</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;ulow&#39;</span><span class="p">]</span>
+		<span class="n">uhigh</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;uhigh&#39;</span><span class="p">]</span>
+		<span class="k">if</span> <span class="ow">not</span> <span class="p">((</span><span class="n">ulow</span> <span class="o">&lt;=</span> <span class="n">u</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span> <span class="ow">and</span> <span class="p">(</span><span class="n">uhigh</span> <span class="o">&gt;=</span> <span class="n">u</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()):</span>
+			<span class="c"># does not even lie in our primitive rectangle</span>
+			<span class="c"># do not even need to compute the distances</span>
+			<span class="k">return</span> <span class="bp">False</span>
+		
+		<span class="n">members</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;members&#39;</span><span class="p">]</span>
+		<span class="n">maxdistance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;maxdistance&#39;</span><span class="p">]</span>
+		
+		<span class="c"># if not initialized: no prefiltering</span>
+		<span class="k">if</span> <span class="n">maxdistance</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+			<span class="k">return</span> <span class="bp">True</span>
+		
+		<span class="c"># compute distance to each member in each dimension</span>
+		<span class="n">dists</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">spatial</span><span class="o">.</span><span class="n">distance</span><span class="o">.</span><span class="n">cdist</span><span class="p">(</span><span class="n">members</span><span class="p">,</span> <span class="p">[</span><span class="n">u</span><span class="p">],</span> <span class="n">metric</span><span class="o">=</span><span class="s">&#39;euclidean&#39;</span><span class="p">)</span>
+		<span class="n">dist_criterion</span> <span class="o">=</span> <span class="n">dists</span> <span class="o">&lt;</span> <span class="n">maxdistance</span>
+		<span class="c"># is it true for at least one?</span>
+		<span class="n">closeby</span> <span class="o">=</span> <span class="n">dist_criterion</span><span class="o">.</span><span class="n">any</span><span class="p">()</span>
+		<span class="k">return</span> <span class="n">closeby</span>
+</div>
+<div class="viewcode-block" id="HybridRadFriendsConstrainer.are_inside_rect"><a class="viewcode-back" href="../../../drawing.html#nested_sampling.samplers.galilean.HybridRadFriendsConstrainer.are_inside_rect">[docs]</a>	<span class="k">def</span> <span class="nf">are_inside_rect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Check if the new points are near or inside one of our clusters</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">ulow</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;ulow&#39;</span><span class="p">]</span>
+		<span class="n">uhigh</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;uhigh&#39;</span><span class="p">]</span>
+		<span class="n">mask</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(((</span><span class="n">ulow</span> <span class="o">&lt;=</span> <span class="n">u</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="n">uhigh</span> <span class="o">&gt;=</span> <span class="n">u</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)))</span></div>
+	<span class="k">def</span> <span class="nf">are_inside_cluster</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">us</span><span class="p">,</span> <span class="n">ndim</span><span class="p">):</span>
+		<span class="n">members</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;members&#39;</span><span class="p">]</span>
+		<span class="n">maxdistance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;maxdistance&#39;</span><span class="p">]</span>
+		
+		<span class="n">dists</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">spatial</span><span class="o">.</span><span class="n">distance</span><span class="o">.</span><span class="n">cdist</span><span class="p">(</span><span class="n">members</span><span class="p">,</span> <span class="n">us</span><span class="p">,</span> <span class="n">metric</span><span class="o">=</span><span class="s">&#39;euclidean&#39;</span><span class="p">)</span>
+		<span class="n">dist_criterion</span> <span class="o">=</span> <span class="n">dists</span> <span class="o">&lt;</span> <span class="n">maxdistance</span>
+		<span class="c"># is it true for at least one?</span>
+		<span class="n">closeby</span> <span class="o">=</span> <span class="n">dist_criterion</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+		<span class="k">return</span> <span class="n">closeby</span>
+	
+	<span class="k">def</span> <span class="nf">adapt</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="k">pass</span>
+
+	<span class="k">def</span> <span class="nf">local_step_sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">u1</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">L1</span><span class="p">,</span> <span class="n">Lmin</span><span class="p">,</span> <span class="n">priortransform</span><span class="p">,</span> <span class="n">loglikelihood</span><span class="p">,</span> <span class="n">u</span><span class="p">):</span>
+		<span class="k">assert</span> <span class="n">L1</span> <span class="o">&gt;=</span> <span class="n">Lmin</span>
+		<span class="n">maxdistance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;maxdistance&#39;</span><span class="p">]</span>
+		<span class="n">k</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="c"># draw new random velocity</span>
+		<span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&#39;velocities&#39;</span><span class="p">):</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">velocities</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">random_unit_vector</span><span class="p">(</span><span class="n">ndim</span><span class="p">)</span>
+		
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">plot</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+			<span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">add_artist</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">Circle</span><span class="p">((</span><span class="n">u1</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">u1</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">maxdistance</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s">&#39;grey&#39;</span><span class="p">))</span>
+			<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">u</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span> <span class="n">u</span><span class="p">[:,</span><span class="mi">1</span><span class="p">],</span> <span class="s">&#39;o&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s">&#39;grey&#39;</span><span class="p">)</span>
+			<span class="n">x</span> <span class="o">=</span> <span class="p">[</span><span class="n">u1</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+			<span class="n">y</span> <span class="o">=</span> <span class="p">[</span><span class="n">u1</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
+		<span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nsteps</span><span class="p">):</span>
+			<span class="n">u2</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">L2</span><span class="p">,</span> <span class="n">k2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">u1</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">L1</span><span class="p">,</span> <span class="n">Lmin</span><span class="p">,</span> <span class="n">priortransform</span><span class="p">,</span> <span class="n">loglikelihood</span><span class="p">)</span>
+			<span class="n">k</span> <span class="o">+=</span> <span class="n">k2</span>
+			<span class="n">u1</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">L1</span> <span class="o">=</span> <span class="n">u2</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">L2</span>
+			<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">plot</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+				<span class="n">x</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">u1</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+				<span class="n">y</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">u1</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">plot</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="s">&#39;x-&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s">&#39;g&#39;</span><span class="p">)</span>
+			<span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span><span class="n">aspect</span><span class="o">=</span><span class="s">&#39;equal&#39;</span><span class="p">,</span> <span class="n">adjustable</span><span class="o">=</span><span class="s">&#39;datalim&#39;</span><span class="p">)</span>
+			<span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">15</span><span class="p">:</span>
+				<span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s">&#39;galilean_</span><span class="si">%03d</span><span class="s">.pdf&#39;</span> <span class="o">%</span> <span class="n">i</span><span class="p">)</span>
+			<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+		<span class="k">return</span> <span class="n">u1</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">L1</span><span class="p">,</span> <span class="n">k</span>
+
+	<span class="k">def</span> <span class="nf">generate_direct</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ndim</span><span class="p">):</span>
+		<span class="c"># draw directly from prior</span>
+		<span class="n">ntotal</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="n">maxdistance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;maxdistance&#39;</span><span class="p">]</span>
+		<span class="k">assert</span> <span class="n">maxdistance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span>
+		<span class="n">members</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;members&#39;</span><span class="p">]</span>
+		<span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+			<span class="n">us</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;ulow&#39;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;uhigh&#39;</span><span class="p">],</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">ndim</span><span class="p">))</span>
+			<span class="n">ntotal</span> <span class="o">+=</span> <span class="mi">100</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">ndirect</span> <span class="o">+=</span> <span class="mi">100</span>
+			<span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">are_inside_cluster</span><span class="p">(</span><span class="n">us</span><span class="p">,</span> <span class="n">ndim</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">ndirect_accepts</span> <span class="o">+=</span> <span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+			<span class="k">if</span> <span class="ow">not</span> <span class="n">mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+				<span class="k">continue</span>
+			<span class="n">us</span> <span class="o">=</span> <span class="n">us</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+			<span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">us</span><span class="p">:</span>
+				<span class="k">yield</span> <span class="n">u</span><span class="p">,</span> <span class="n">ntotal</span>
+				<span class="n">ntotal</span> <span class="o">=</span> <span class="mi">0</span>
+	
+	<span class="k">def</span> <span class="nf">generate_from_friends</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ndim</span><span class="p">):</span>
+		<span class="c"># for small regions draw from points</span>
+		<span class="n">ntotal</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="n">maxdistance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;maxdistance&#39;</span><span class="p">]</span>
+		<span class="k">assert</span> <span class="n">maxdistance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span>
+		<span class="n">members</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;members&#39;</span><span class="p">]</span>
+		<span class="n">N</span> <span class="o">=</span> <span class="mi">400</span>
+		<span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+			<span class="c"># choose random friend</span>
+			<span class="n">us</span> <span class="o">=</span> <span class="n">members</span><span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">members</span><span class="p">),</span> <span class="n">N</span><span class="p">),:]</span>
+			<span class="n">ntotal</span> <span class="o">+=</span> <span class="mi">100</span>
+			<span class="c"># draw direction around it</span>
+			<span class="n">direction</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">ndim</span><span class="p">))</span>
+			<span class="n">direction</span> <span class="o">=</span> <span class="n">direction</span> <span class="o">/</span> <span class="p">((</span><span class="n">direction</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">**</span><span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">))</span>
+			<span class="c"># choose radius: volume gets larger towards the outside</span>
+			<span class="c"># so give the correct weight with dimensionality</span>
+			<span class="n">radius</span> <span class="o">=</span> <span class="n">maxdistance</span> <span class="o">*</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">N</span><span class="p">,</span><span class="mi">1</span><span class="p">))</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="n">ndim</span><span class="p">)</span>
+			<span class="n">us</span> <span class="o">=</span> <span class="n">us</span> <span class="o">+</span> <span class="n">direction</span> <span class="o">*</span> <span class="n">radius</span>
+			<span class="n">inside</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">logical_and</span><span class="p">((</span><span class="n">us</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="n">us</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+			<span class="k">if</span> <span class="ow">not</span> <span class="n">inside</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+				<span class="k">continue</span>
+			<span class="n">us</span> <span class="o">=</span> <span class="n">us</span><span class="p">[</span><span class="n">inside</span><span class="p">]</span>
+			<span class="c"># count the number of points this is close to</span>
+			<span class="n">dists</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">spatial</span><span class="o">.</span><span class="n">distance</span><span class="o">.</span><span class="n">cdist</span><span class="p">(</span><span class="n">members</span><span class="p">,</span> <span class="n">us</span><span class="p">,</span> <span class="n">metric</span><span class="o">=</span><span class="s">&#39;euclidean&#39;</span><span class="p">)</span>
+			<span class="n">nnear</span> <span class="o">=</span> <span class="p">(</span><span class="n">dists</span> <span class="o">&lt;</span> <span class="n">maxdistance</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+			<span class="c"># accept with probability 1./nnear</span>
+			<span class="n">coin</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">us</span><span class="p">))</span>
+			<span class="n">accept</span> <span class="o">=</span> <span class="n">coin</span> <span class="o">&lt;</span> <span class="mf">1.</span> <span class="o">/</span> <span class="n">nnear</span>
+			<span class="n">us</span> <span class="o">=</span> <span class="n">us</span><span class="p">[</span><span class="n">accept</span><span class="p">]</span>
+			<span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">us</span><span class="p">:</span>
+				<span class="k">yield</span> <span class="n">u</span><span class="p">,</span> <span class="n">ntotal</span>
+				<span class="n">ntotal</span> <span class="o">=</span> <span class="mi">0</span>
+
+	<span class="k">def</span> <span class="nf">draw_constrained</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Lmin</span><span class="p">,</span> <span class="n">priortransform</span><span class="p">,</span> <span class="n">loglikelihood</span><span class="p">,</span> <span class="n">ndim</span><span class="p">,</span> 
+			<span class="n">previous</span><span class="p">,</span> <span class="n">startu</span><span class="p">,</span> <span class="n">startx</span><span class="p">,</span> <span class="n">startL</span><span class="p">,</span> <span class="n">starti</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+		<span class="c"># compute RadFriends spheres</span>
+		<span class="n">u</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">u</span> <span class="k">for</span> <span class="n">u</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">L</span> <span class="ow">in</span> <span class="n">previous</span> <span class="k">if</span> <span class="n">L</span> <span class="o">&gt;=</span> <span class="n">Lmin</span><span class="p">])</span>
+		<span class="n">rebuilt</span> <span class="o">=</span> <span class="bp">False</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">previous</span><span class="p">)</span> <span class="o">%</span> <span class="mi">50</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="c"># jackknife, is fast</span>
+			<span class="n">maxdistance</span> <span class="o">=</span> <span class="n">nearest_rdistance_guess</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">metric</span><span class="o">=</span><span class="s">&#39;euclidean&#39;</span><span class="p">)</span>
+			<span class="c">#maxdistance = find_rdistance(u, nbootstraps=50, metric=&#39;euclidean&#39;, verbose=False)</span>
+			<span class="c"># make sure we only shrink</span>
+			<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="s">&#39;maxdistance&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">:</span>
+				<span class="n">maxdistance</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">maxdistance</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;maxdistance&#39;</span><span class="p">])</span>
+			<span class="c">#print &#39;new distance:&#39;, maxdistance</span>
+			<span class="c"># compute enclosing rectangle for quick checks</span>
+			<span class="n">ulow</span>  <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">max</span><span class="p">([</span><span class="n">u</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="n">maxdistance</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">ndim</span><span class="p">)],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+			<span class="n">uhigh</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">min</span><span class="p">([</span><span class="n">u</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">maxdistance</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">ndim</span><span class="p">)],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">region</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">members</span><span class="o">=</span><span class="n">u</span><span class="p">,</span> <span class="n">maxdistance</span><span class="o">=</span><span class="n">maxdistance</span><span class="p">,</span> <span class="n">ulow</span><span class="o">=</span><span class="n">ulow</span><span class="p">,</span> <span class="n">uhigh</span><span class="o">=</span><span class="n">uhigh</span><span class="p">)</span>
+			
+			<span class="bp">self</span><span class="o">.</span><span class="n">direct_generator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_direct</span><span class="p">(</span><span class="n">ndim</span><span class="o">=</span><span class="n">ndim</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">friends_generator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_from_friends</span><span class="p">(</span><span class="n">ndim</span><span class="o">=</span><span class="n">ndim</span><span class="p">)</span>
+			<span class="n">rebuilt</span> <span class="o">=</span> <span class="bp">True</span>
+		
+		<span class="n">ntoaccept</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">phase</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="c"># draw from rectangle until sphere rejection drops below 1%</span>
+			<span class="k">for</span> <span class="n">u</span><span class="p">,</span> <span class="n">ntotal</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">direct_generator</span><span class="p">:</span>
+				<span class="n">x</span> <span class="o">=</span> <span class="n">priortransform</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
+				<span class="n">L</span> <span class="o">=</span> <span class="n">loglikelihood</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">nfriends</span> <span class="o">+=</span> <span class="mi">1</span>
+				<span class="n">ntoaccept</span> <span class="o">+=</span> <span class="mi">1</span>
+				<span class="k">if</span> <span class="n">L</span> <span class="o">&gt;=</span> <span class="n">Lmin</span><span class="p">:</span>
+					<span class="k">if</span> <span class="n">ntotal</span> <span class="o">&gt;=</span> <span class="mi">200</span><span class="p">:</span>
+						<span class="k">print</span> <span class="s">&#39;Drawing from prior is becoming inefficient: </span><span class="si">%d</span><span class="s"> draws before accept&#39;</span> <span class="o">%</span> <span class="n">ntotal</span>
+						<span class="k">print</span>
+					<span class="k">if</span> <span class="n">ntoaccept</span> <span class="o">&gt;=</span> <span class="mi">200</span><span class="p">:</span>
+						<span class="k">print</span> <span class="s">&#39;RadFriends is becoming inefficient: </span><span class="si">%d</span><span class="s"> draws until accept&#39;</span> <span class="o">%</span> <span class="n">ntoaccept</span>
+						<span class="k">print</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">nfriends_accepts</span> <span class="o">+=</span> <span class="mi">1</span>
+					<span class="k">return</span> <span class="n">u</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">ntoaccept</span>
+				<span class="k">if</span> <span class="n">ntotal</span> <span class="o">&gt;=</span> <span class="mi">1000</span><span class="p">:</span>
+					<span class="c"># drawing directly from prior </span>
+					<span class="c"># becomes inefficient as we go to</span>
+					<span class="c"># small region</span>
+					<span class="c"># switch to drawing from Friends</span>
+					<span class="k">print</span> <span class="s">&#39;switching to Friends sampling phase&#39;</span>
+					<span class="k">print</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">phase</span> <span class="o">=</span> <span class="mi">1</span>
+					<span class="k">break</span>
+				<span class="k">if</span> <span class="n">ntoaccept</span> <span class="o">&gt;=</span> <span class="mi">2000</span><span class="p">:</span>
+					<span class="k">print</span> <span class="s">&#39;switching to local steps sampling phase&#39;</span>
+					<span class="k">print</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">phase</span> <span class="o">=</span> <span class="mi">2</span>
+					<span class="c"># drawing using RadFriends can become</span>
+					<span class="c"># inefficient in high dimensionality</span>
+					<span class="c"># switch to local step sampling</span>
+					<span class="k">break</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">phase</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+			<span class="c"># draw from spheres until acceptance rate drops below 0.05%</span>
+			<span class="k">for</span> <span class="n">u</span><span class="p">,</span> <span class="n">ntotal</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">friends_generator</span><span class="p">:</span>
+				<span class="n">x</span> <span class="o">=</span> <span class="n">priortransform</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
+				<span class="n">L</span> <span class="o">=</span> <span class="n">loglikelihood</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">nfriends</span> <span class="o">+=</span> <span class="mi">1</span>
+				<span class="n">ntoaccept</span> <span class="o">+=</span> <span class="mi">1</span>
+				<span class="k">if</span> <span class="n">L</span> <span class="o">&gt;=</span> <span class="n">Lmin</span><span class="p">:</span>
+					<span class="k">if</span> <span class="n">ntoaccept</span> <span class="o">&gt;=</span> <span class="mi">200</span><span class="p">:</span>
+						<span class="k">print</span> <span class="s">&#39;RadFriends is becoming inefficient: </span><span class="si">%d</span><span class="s"> draws until accept&#39;</span> <span class="o">%</span> <span class="n">ntoaccept</span>
+						<span class="k">print</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">nfriends_accepts</span> <span class="o">+=</span> <span class="mi">1</span>
+					<span class="k">return</span> <span class="n">u</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">ntoaccept</span>
+				<span class="k">if</span> <span class="n">ntoaccept</span> <span class="o">&gt;=</span> <span class="mi">2000</span><span class="p">:</span>
+					<span class="k">print</span> <span class="s">&#39;switching to local steps sampling phase&#39;</span>
+					<span class="k">print</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">phase</span> <span class="o">=</span> <span class="mi">2</span>
+					<span class="c"># drawing using RadFriends can become</span>
+					<span class="c"># inefficient in high dimensionality</span>
+					<span class="c"># switch to local step sampling</span>
+					<span class="k">break</span>
+		<span class="c">#print &#39;falling through...&#39;</span>
+		<span class="c"># then do local step sampling</span>
+		<span class="n">i</span> <span class="o">=</span> <span class="n">starti</span> <span class="c"># particle ID</span>
+		<span class="n">u1</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">L1</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">local_step_sample</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">startu</span><span class="p">,</span> <span class="n">startx</span><span class="p">,</span> <span class="n">startL</span><span class="p">,</span> 
+			<span class="n">Lmin</span><span class="p">,</span> <span class="n">priortransform</span><span class="p">,</span> <span class="n">loglikelihood</span><span class="p">,</span> <span class="n">u</span><span class="p">)</span>
+		<span class="c">#self.stats()</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">adapt</span><span class="p">()</span>
+		<span class="k">return</span> <span class="n">u1</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">L1</span><span class="p">,</span> <span class="n">k</span> <span class="o">+</span> <span class="n">ntoaccept</span>
+	
+	<span class="k">def</span> <span class="nf">stats</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="k">pass</span>
+
+</div>
+<div class="viewcode-block" id="GalileanRadFriendsConstrainer"><a class="viewcode-back" href="../../../drawing.html#nested_sampling.samplers.galilean.GalileanRadFriendsConstrainer">[docs]</a><span class="k">class</span> <span class="nc">GalileanRadFriendsConstrainer</span><span class="p">(</span><span class="n">HybridRadFriendsConstrainer</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	Galilean Nested Sampling is a special case of Nested Sampling using Hamiltonian Monte Carlo.</span>
+<span class="sd">	Here we use RadFriends to determine the reflection surfaces.</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nlive_points</span><span class="p">,</span> <span class="n">ndim</span><span class="p">,</span> <span class="n">velocity_scale</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">nsteps</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span> <span class="n">plot</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+		<span class="n">HybridRadFriendsConstrainer</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nsteps</span> <span class="o">=</span> <span class="n">nsteps</span><span class="p">,</span> <span class="n">plot</span> <span class="o">=</span> <span class="n">plot</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">velocity_scale</span> <span class="o">=</span> <span class="n">velocity_scale</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">velocities</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="c"># random direction initialisation</span>
+		<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nlive_points</span><span class="p">):</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">velocities</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">random_unit_vector</span><span class="p">(</span><span class="n">ndim</span><span class="p">))</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">velocities</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">velocities</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">nproceed</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">nreflect</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">nreverse</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">nproceed_total</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">nreflect_total</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">nreverse_total</span> <span class="o">=</span> <span class="mi">0</span>
+	
+<div class="viewcode-block" id="GalileanRadFriendsConstrainer.reflect"><a class="viewcode-back" href="../../../drawing.html#nested_sampling.samplers.galilean.GalileanRadFriendsConstrainer.reflect">[docs]</a>	<span class="k">def</span> <span class="nf">reflect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+		<span class="sd">&quot;&quot;&quot; Find reflection surface for line u + t*v, t&gt;0 &quot;&quot;&quot;</span>
+		<span class="c"># Find set of RadFriend spheres that lie on the line</span>
+		<span class="c"># compute line-sphere intersection with every point</span>
+		<span class="n">members</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;members&#39;</span><span class="p">]</span>
+		<span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;maxdistance&#39;</span><span class="p">]</span>
+		
+		<span class="n">intervals</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">members</span><span class="p">:</span>
+			<span class="n">uc</span> <span class="o">=</span> <span class="n">u</span> <span class="o">-</span> <span class="n">c</span>
+			<span class="n">v2</span> <span class="o">=</span> <span class="n">dot</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+			<span class="n">uc2</span> <span class="o">=</span> <span class="n">dot</span><span class="p">(</span><span class="n">uc</span><span class="p">,</span> <span class="n">uc</span><span class="p">)</span>
+			<span class="n">r2</span> <span class="o">=</span> <span class="n">dot</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">r</span><span class="p">)</span>
+			<span class="n">vuc</span> <span class="o">=</span> <span class="n">dot</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">uc</span><span class="p">)</span>
+			<span class="n">root</span> <span class="o">=</span> <span class="n">vuc</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> <span class="n">v2</span> <span class="o">*</span> <span class="p">(</span><span class="n">uc2</span> <span class="o">-</span> <span class="n">r2</span><span class="p">)</span>
+			<span class="k">if</span> <span class="n">root</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+				<span class="k">continue</span>
+			<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">plot</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">:</span>
+				<span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">add_artist</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">Circle</span><span class="p">((</span><span class="n">c</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">c</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">r</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s">&#39;r&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.1</span><span class="p">))</span>
+			<span class="n">t1</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="n">vuc</span> <span class="o">-</span> <span class="n">root</span><span class="o">**</span><span class="mf">0.5</span><span class="p">)</span> <span class="o">/</span> <span class="n">v2</span>
+			<span class="n">t2</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="n">vuc</span> <span class="o">+</span> <span class="n">root</span><span class="o">**</span><span class="mf">0.5</span><span class="p">)</span> <span class="o">/</span> <span class="n">v2</span>
+			<span class="c">#if True:</span>
+			<span class="c">#	start = v * t1 + u</span>
+			<span class="c">#	end   = v * t2 + u</span>
+			<span class="c">#	print &#39;enclosing:&#39;, start, end</span>
+			<span class="c">#	plt.plot([start[0], end[0]], [start[1], end[1]], &#39;-&#39;, color=&#39;orange&#39;, lw=2)</span>
+			<span class="k">if</span> <span class="n">t1</span> <span class="o">&lt;=</span> <span class="n">t2</span><span class="p">:</span>
+				<span class="n">intervals</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">t1</span><span class="p">,</span> <span class="n">t2</span><span class="p">,</span> <span class="n">c</span><span class="p">))</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="n">intervals</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">t2</span><span class="p">,</span> <span class="n">t1</span><span class="p">,</span> <span class="n">c</span><span class="p">))</span>
+		
+		<span class="c"># with the list of intervals, compute the overlapping interval</span>
+		<span class="c"># from the start point to find the last sphere</span>
+		
+		<span class="c"># sort intervals by starting value</span>
+		<span class="n">intervals</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="n">getfirst</span><span class="p">)</span>
+		
+		<span class="c"># start and end of interval</span>
+		<span class="n">A</span><span class="p">,</span> <span class="n">B</span><span class="p">,</span> <span class="n">C</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span>
+		<span class="k">for</span> <span class="n">t1</span><span class="p">,</span> <span class="n">t2</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">intervals</span><span class="p">:</span>
+			<span class="k">if</span> <span class="n">t2</span> <span class="o">&lt;</span> <span class="n">A</span><span class="p">:</span> <span class="k">continue</span> <span class="c"># wrong direction</span>
+			<span class="k">if</span> <span class="n">B</span> <span class="o">&lt;</span> <span class="n">t1</span><span class="p">:</span> <span class="k">break</span>    <span class="c"># end of continuous interval.</span>
+			<span class="k">if</span> <span class="n">B</span> <span class="o">&lt;</span> <span class="n">t2</span><span class="p">:</span>
+				<span class="c"># extend interval</span>
+				<span class="n">B</span> <span class="o">=</span> <span class="n">t2</span>
+				<span class="n">C</span> <span class="o">=</span> <span class="n">c</span>
+		<span class="k">assert</span> <span class="n">C</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span>
+		<span class="c">#print &#39;line interval:&#39;, A, B</span>
+		<span class="c"># now we found the final sphere, C</span>
+		<span class="c"># return the normalisation vector, which is between</span>
+		<span class="c"># the intersection point and the center of the sphere</span>
+		<span class="n">p</span> <span class="o">=</span> <span class="n">B</span> <span class="o">*</span> <span class="n">v</span> <span class="o">+</span> <span class="n">u</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">plot</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+			<span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">add_artist</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">Circle</span><span class="p">((</span><span class="n">C</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">C</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">r</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s">&#39;b&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.2</span><span class="p">))</span>
+			<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s">&#39;+&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s">&#39;b&#39;</span><span class="p">)</span>
+
+		<span class="c">#if not numpy.allclose(C, p):</span>
+		<span class="n">n</span> <span class="o">=</span> <span class="n">C</span> <span class="o">-</span> <span class="n">p</span>
+		<span class="c"># normalise</span>
+		<span class="n">n</span> <span class="o">=</span> <span class="n">n</span> <span class="o">/</span> <span class="n">norm</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+		<span class="n">v2</span> <span class="o">=</span> <span class="n">v</span> <span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">n</span> <span class="o">*</span> <span class="n">dot</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+		<span class="c">#else:</span>
+		<span class="c">#	# we are starting at the exact center of the sphere, </span>
+		<span class="c">#	# and reflecting off the sphere</span>
+		<span class="c">#	# so we just go backwards, as the sphere is perpendicular</span>
+		<span class="c">#	# everywhere.</span>
+		<span class="c">#	print &#39;center of sphere reflection&#39;</span>
+		<span class="c">#	v2 = -v</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">plot</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+			<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">(</span><span class="n">v2</span><span class="o">+</span><span class="n">p</span><span class="p">)[</span><span class="mi">0</span><span class="p">]],</span> <span class="p">[</span><span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="p">(</span><span class="n">p</span><span class="o">+</span><span class="n">v2</span><span class="p">)[</span><span class="mi">1</span><span class="p">]],</span> <span class="s">&#39;-&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s">&#39;b&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.2</span><span class="p">)</span>
+		
+		<span class="k">return</span> <span class="n">u</span> <span class="o">+</span> <span class="n">v</span><span class="p">,</span> <span class="n">v2</span>
+		<span class="c">## if the reflected point is further outside than the </span>
+		<span class="c">## original point u + v, use u + v.</span>
+		<span class="c"># not allowed by detailled balance!</span>
+		<span class="c">#if B &gt; 1:</span>
+		<span class="c">#	return u + v, v2</span>
+		<span class="c">#else:</span>
+		<span class="c">#	return p, v2</span>
+	</div>
+	<span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">u1</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">L1</span><span class="p">,</span> <span class="n">Lmin</span><span class="p">,</span> <span class="n">priortransform</span><span class="p">,</span> <span class="n">loglikelihood</span><span class="p">):</span>
+		<span class="c"># guess for stepsize</span>
+		<span class="n">dice</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+		<span class="n">timestep</span> <span class="o">=</span> <span class="mf">0.1</span> <span class="k">if</span> <span class="n">dice</span> <span class="o">&lt;</span> <span class="mf">0.3</span> <span class="k">else</span> <span class="mi">1</span>
+		<span class="n">scale</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;maxdistance&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">velocity_scale</span> <span class="o">*</span> <span class="n">timestep</span>
+		<span class="c">#print &#39;stepsize:&#39;, stepsize, self.velocity_scale, maxdistance</span>
+		<span class="n">v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">velocities</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">scale</span>
+		<span class="c"># Start with (ui, v) where L(x1) is OK</span>
+		<span class="c"># go along</span>
+		<span class="n">u2</span> <span class="o">=</span> <span class="n">u1</span> <span class="o">+</span> <span class="n">v</span>
+		<span class="n">k</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="c"># check if inside</span>
+		<span class="n">inside_superset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_inside</span><span class="p">(</span><span class="n">u2</span><span class="p">)</span>
+		<span class="n">inside</span> <span class="o">=</span> <span class="bp">False</span>
+		<span class="k">if</span> <span class="n">inside_superset</span><span class="p">:</span>
+			<span class="n">x2</span> <span class="o">=</span> <span class="n">priortransform</span><span class="p">(</span><span class="n">u2</span><span class="p">)</span>
+			<span class="n">L2</span> <span class="o">=</span> <span class="n">loglikelihood</span><span class="p">(</span><span class="n">x2</span><span class="p">)</span>
+			<span class="n">k</span> <span class="o">=</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span>
+			<span class="n">inside</span> <span class="o">=</span> <span class="n">L2</span> <span class="o">&gt;=</span> <span class="n">Lmin</span>
+		<span class="k">if</span> <span class="n">inside</span><span class="p">:</span>
+			<span class="c"># if L2 is ok, proceed with u2, v</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">nproceed</span> <span class="o">+=</span> <span class="mi">1</span>
+			<span class="c">#print u1, v, &#39; -- proceed --&gt;&#39;, u2, v</span>
+			<span class="k">return</span> <span class="n">u2</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">L2</span><span class="p">,</span> <span class="n">k</span>
+		<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">plot</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+			<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">u2</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">u2</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s">&#39;s&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s">&#39;r&#39;</span><span class="p">)</span>
+		<span class="c"># not inside.</span>
+		<span class="c"># we need to reflect.</span>
+		<span class="c"># find reflection surface</span>
+		<span class="n">ureflect</span><span class="p">,</span> <span class="n">vreflect</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reflect</span><span class="p">(</span><span class="n">u1</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+		<span class="c"># go there from the outside point</span>
+		<span class="c"># here we use a point a bit closer in, the boundary point</span>
+		<span class="n">u3</span> <span class="o">=</span> <span class="n">ureflect</span> <span class="o">+</span> <span class="n">vreflect</span>
+		
+		<span class="n">inside_superset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_inside</span><span class="p">(</span><span class="n">u3</span><span class="p">)</span>
+		<span class="n">inside</span> <span class="o">=</span> <span class="bp">False</span>
+		<span class="k">if</span> <span class="n">inside_superset</span><span class="p">:</span>
+			<span class="n">x3</span> <span class="o">=</span> <span class="n">priortransform</span><span class="p">(</span><span class="n">u3</span><span class="p">)</span>
+			<span class="n">L3</span> <span class="o">=</span> <span class="n">loglikelihood</span><span class="p">(</span><span class="n">x3</span><span class="p">)</span>
+			<span class="n">k</span> <span class="o">=</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span>
+			<span class="n">inside</span> <span class="o">=</span> <span class="n">L3</span> <span class="o">&gt;=</span> <span class="n">Lmin</span>
+		<span class="k">if</span> <span class="n">inside</span><span class="p">:</span>
+			<span class="c"># update velocity, with mild randomisation</span>
+			<span class="c">#small_angle = pi / 180 / 10</span>
+			<span class="c">#r = numpy.random.normal(size=len(vreflect))</span>
+			<span class="c">#r /= norm(r)</span>
+			<span class="c">#vreflect = vreflect * cos(small_angle) + r * scale * sin(small_angle)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">velocities</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">vreflect</span> <span class="o">/</span> <span class="n">scale</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">nreflect</span> <span class="o">+=</span> <span class="mi">1</span>
+			<span class="c">#print u1, v, &#39; -- reflect --&gt;&#39;, u3, vreflect</span>
+			<span class="k">return</span> <span class="n">u3</span><span class="p">,</span> <span class="n">x3</span><span class="p">,</span> <span class="n">L3</span><span class="p">,</span> <span class="n">k</span>
+		<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">plot</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+			<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">u3</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">u3</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s">&#39;^&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s">&#39;r&#39;</span><span class="p">)</span>
+		
+		<span class="c"># reflected point is also not inside -- very bad.</span>
+		<span class="c"># try reversing from starting point</span>
+		<span class="n">small_angle</span> <span class="o">=</span> <span class="n">pi</span> <span class="o">/</span> <span class="mi">180</span>
+		<span class="n">r</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">vreflect</span><span class="p">))</span>
+		<span class="n">r</span> <span class="o">/=</span> <span class="n">norm</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+		<span class="n">v</span> <span class="o">=</span> <span class="n">v</span> <span class="o">*</span> <span class="n">cos</span><span class="p">(</span><span class="n">small_angle</span><span class="p">)</span> <span class="o">+</span> <span class="n">r</span> <span class="o">*</span> <span class="n">scale</span> <span class="o">*</span> <span class="n">sin</span><span class="p">(</span><span class="n">small_angle</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">velocities</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">v</span> <span class="o">/</span> <span class="n">scale</span>
+		<span class="c">#print u1, v, &#39; -- reflect --&gt;&#39;, u3, &#39;-- reverse --&gt;&#39;, u1, -v</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">nreverse</span> <span class="o">+=</span> <span class="mi">1</span>
+		<span class="k">return</span> <span class="n">u1</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">L1</span><span class="p">,</span> <span class="n">k</span>
+	
+	<span class="k">def</span> <span class="nf">adapt</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nproceed</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">nreflect</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">nreverse</span>
+		<span class="n">pr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nproceed</span> <span class="o">*</span> <span class="mf">1.</span> <span class="o">/</span> <span class="n">n</span>
+		<span class="n">N</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">velocities</span><span class="p">)</span>
+		<span class="n">rr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nreverse</span> <span class="o">*</span> <span class="mf">1.</span> <span class="o">*</span> <span class="n">N</span> <span class="o">/</span> <span class="n">n</span>
+		<span class="k">if</span> <span class="n">pr</span> <span class="o">&lt;</span> <span class="mf">0.6</span><span class="p">:</span> <span class="c"># too many proceeds</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">velocity_scale</span> <span class="o">/=</span> <span class="mf">1.1</span>
+			<span class="k">print</span> <span class="s">&#39;velocity&#39;</span> <span class="o">+</span> <span class="s">&#39; &#39;</span><span class="o">*</span><span class="mi">50</span> <span class="o">+</span> <span class="s">&#39;v&#39;</span>
+		<span class="k">elif</span> <span class="n">pr</span> <span class="o">&gt;</span> <span class="mf">0.85</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">velocity_scale</span> <span class="o">*=</span> <span class="mf">1.1</span>
+			<span class="k">print</span> <span class="s">&#39;velocity&#39;</span> <span class="o">+</span> <span class="s">&#39; &#39;</span><span class="o">*</span><span class="mi">50</span> <span class="o">+</span> <span class="s">&#39;^&#39;</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">if</span> <span class="n">rr</span> <span class="o">&gt;</span> <span class="mf">0.10</span><span class="p">:</span> <span class="c"># too many reverse, decrease scale</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">velocity_scale</span> <span class="o">/=</span> <span class="mf">1.01</span>
+			<span class="k">elif</span> <span class="n">rr</span> <span class="o">&lt;</span> <span class="mf">0.03</span><span class="p">:</span> <span class="c"># few reverses, can increase scale</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">velocity_scale</span> <span class="o">*=</span> <span class="mf">1.01</span>
+			<span class="c"># else: # just right</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">nproceed_total</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nproceed</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">nreflect_total</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nreflect</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">nreverse_total</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nreverse</span>
+		
+		<span class="c"># reset</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">nproceed</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">nreflect</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">nreverse</span> <span class="o">=</span> <span class="mi">0</span>
+	
+	<span class="k">def</span> <span class="nf">stats</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nproceed_total</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">nreflect_total</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">nreverse_total</span>
+		<span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> <span class="k">return</span>
+		<span class="n">velocity_scale</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">velocity_scale</span>
+		<span class="k">print</span> <span class="s">&#39;GalileanConstrainer stats: nsteps: </span><span class="si">%d</span><span class="s">, </span><span class="si">%.3f%%</span><span class="s"> proceeds, </span><span class="si">%.3f%%</span><span class="s"> reflects, </span><span class="si">%.5f%%</span><span class="s"> reverses &#39;</span> <span class="o">%</span> <span class="p">(</span>
+			<span class="n">n</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nproceed_total</span> <span class="o">*</span> <span class="mf">100.</span> <span class="o">/</span> <span class="n">n</span><span class="p">,</span>  <span class="bp">self</span><span class="o">.</span><span class="n">nreflect_total</span> <span class="o">*</span> <span class="mf">100.</span> <span class="o">/</span> <span class="n">n</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nreverse_total</span> <span class="o">*</span> <span class="mf">100.</span> <span class="o">/</span> <span class="n">n</span><span class="p">)</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">nproceed_total</span> <span class="o">*</span> <span class="mf">1.</span> <span class="o">/</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="mf">0.5</span><span class="p">:</span>
+			<span class="k">print</span> <span class="s">&#39;velocity_scale = </span><span class="si">%s</span><span class="s"> (too large!, too few proceeds)&#39;</span> <span class="o">%</span> <span class="n">velocity_scale</span>
+		<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">nproceed_total</span> <span class="o">*</span> <span class="mf">1.</span> <span class="o">/</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mf">0.75</span><span class="p">:</span>
+			<span class="k">print</span> <span class="s">&#39;velocity_scale = </span><span class="si">%s</span><span class="s"> (too small!, too many proceeds)&#39;</span> <span class="o">%</span> <span class="n">velocity_scale</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">print</span> <span class="s">&#39;velocity_scale = </span><span class="si">%s</span><span class="s"> (good by proceeds)&#39;</span> <span class="o">%</span> <span class="n">velocity_scale</span>
+		<span class="n">N</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">velocities</span><span class="p">)</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">nreverse_total</span> <span class="o">*</span> <span class="mf">1.</span> <span class="o">/</span> <span class="n">n</span> <span class="o">*</span> <span class="n">N</span> <span class="o">&lt;</span> <span class="mf">0.25</span><span class="p">:</span>
+			<span class="k">print</span> <span class="s">&#39;velocity_scale = </span><span class="si">%s</span><span class="s"> (too large!, too few reverse)&#39;</span> <span class="o">%</span> <span class="n">velocity_scale</span>
+		<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">nreverse_total</span> <span class="o">*</span> <span class="mf">1.</span> <span class="o">/</span> <span class="n">n</span> <span class="o">*</span> <span class="n">N</span> <span class="o">&gt;</span> <span class="mi">5</span><span class="p">:</span>
+			<span class="k">print</span> <span class="s">&#39;velocity_scale = </span><span class="si">%s</span><span class="s"> (too small!, too many reverse)&#39;</span> <span class="o">%</span> <span class="n">velocity_scale</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">print</span> <span class="s">&#39;velocity_scale = </span><span class="si">%s</span><span class="s"> (good by reverses)&#39;</span> <span class="o">%</span> <span class="n">velocity_scale</span>
+</div>
+<div class="viewcode-block" id="MCMCRadFriendsConstrainer"><a class="viewcode-back" href="../../../drawing.html#nested_sampling.samplers.galilean.MCMCRadFriendsConstrainer">[docs]</a><span class="k">class</span> <span class="nc">MCMCRadFriendsConstrainer</span><span class="p">(</span><span class="n">HybridRadFriendsConstrainer</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	Markov Chain Monte Carlo sampling</span>
+<span class="sd">	</span>
+<span class="sd">	Here we use RadFriends to restrict the proposal distribution.</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">proposal_scale</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">nsteps</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span> <span class="n">plot</span> <span class="o">=</span> <span class="bp">False</span><span class="p">):</span>
+		<span class="n">HybridRadFriendsConstrainer</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nsteps</span> <span class="o">=</span> <span class="n">nsteps</span><span class="p">,</span> <span class="n">plot</span> <span class="o">=</span> <span class="n">plot</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">proposal_scale</span> <span class="o">=</span> <span class="n">proposal_scale</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">naccepts</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">nrejects</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">naccepts_total</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">nrejects_total</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">nskip</span> <span class="o">=</span> <span class="mi">0</span>
+	
+	<span class="k">def</span> <span class="nf">adapt</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">naccepts</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">nrejects</span>
+		<span class="n">proposal_scale</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">proposal_scale</span>
+		<span class="n">ar</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">naccepts</span> <span class="o">*</span> <span class="mf">100.</span> <span class="o">/</span> <span class="n">n</span>
+		<span class="n">boost</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nskip</span> <span class="o">*</span> <span class="mf">100.</span> <span class="o">/</span> <span class="n">n</span>
+		<span class="k">if</span> <span class="n">ar</span> <span class="o">&lt;</span> <span class="mi">85</span><span class="p">:</span>
+			<span class="k">print</span> <span class="s">&#39;proposal scale </span><span class="si">%.2f</span><span class="s"> acceptance rate: </span><span class="si">%.2f%%</span><span class="s"> </span><span class="si">%50s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">proposal_scale</span><span class="p">,</span> <span class="n">ar</span><span class="p">,</span> <span class="s">&#39;v&#39;</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">proposal_scale</span> <span class="o">/=</span> <span class="mf">1.01</span>
+		<span class="k">elif</span> <span class="n">ar</span> <span class="o">&gt;</span> <span class="mi">95</span><span class="p">:</span>
+			<span class="k">print</span> <span class="s">&#39;proposal scale </span><span class="si">%.2f</span><span class="s"> acceptance rate: </span><span class="si">%.2f%%</span><span class="s"> </span><span class="si">%50s</span><span class="s">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">proposal_scale</span><span class="p">,</span> <span class="n">ar</span><span class="p">,</span> <span class="s">&#39;^&#39;</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">proposal_scale</span> <span class="o">*=</span> <span class="mf">1.01</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">naccepts_total</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">naccepts</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">nrejects_total</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nrejects</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">naccepts</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">nrejects</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">nskip</span> <span class="o">=</span> <span class="mi">0</span>
+	
+	<span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">u1</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">L1</span><span class="p">,</span> <span class="n">Lmin</span><span class="p">,</span> <span class="n">priortransform</span><span class="p">,</span> <span class="n">loglikelihood</span><span class="p">):</span>
+		<span class="n">scale</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">region</span><span class="p">[</span><span class="s">&#39;maxdistance&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">proposal_scale</span>
+		<span class="c"># restricted proposal</span>
+		<span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+			<span class="n">step</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">scale</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">u1</span><span class="p">))</span>
+			<span class="n">u2</span> <span class="o">=</span> <span class="n">u1</span> <span class="o">+</span> <span class="n">step</span>
+			<span class="n">inside_superset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_inside</span><span class="p">(</span><span class="n">u2</span><span class="p">)</span>
+			<span class="k">if</span> <span class="n">inside_superset</span><span class="p">:</span>
+				<span class="k">break</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">nskip</span> <span class="o">+=</span> <span class="mi">1</span>
+		<span class="c"># check if inside</span>
+		<span class="n">x2</span> <span class="o">=</span> <span class="n">priortransform</span><span class="p">(</span><span class="n">u2</span><span class="p">)</span>
+		<span class="n">L2</span> <span class="o">=</span> <span class="n">loglikelihood</span><span class="p">(</span><span class="n">x2</span><span class="p">)</span>
+		<span class="n">k</span> <span class="o">=</span> <span class="mi">1</span>
+		<span class="n">inside</span> <span class="o">=</span> <span class="n">L2</span> <span class="o">&gt;=</span> <span class="n">Lmin</span>
+		<span class="k">if</span> <span class="n">inside</span><span class="p">:</span>
+			<span class="c"># if L2 is ok, accept the point</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">naccepts</span> <span class="o">+=</span> <span class="mi">1</span>
+			<span class="k">return</span> <span class="n">u2</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">L2</span><span class="p">,</span> <span class="n">k</span>
+		<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">plot</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+			<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">u2</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">u2</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s">&#39;s&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s">&#39;r&#39;</span><span class="p">)</span>
+		<span class="c"># not inside.</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">nrejects</span> <span class="o">+=</span> <span class="mi">1</span>
+		<span class="k">return</span> <span class="n">u1</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">L1</span><span class="p">,</span> <span class="n">k</span>
+		
+	<span class="k">def</span> <span class="nf">stats</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">naccepts_total</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">nrejects_total</span>
+		<span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> <span class="k">return</span>
+		<span class="n">proposal_scale</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">proposal_scale</span>
+		<span class="n">ar</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">naccepts_total</span> <span class="o">*</span> <span class="mf">100.</span> <span class="o">/</span> <span class="n">n</span>
+		<span class="n">boost</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nskip</span> <span class="o">*</span> <span class="mf">100.</span> <span class="o">/</span> <span class="n">n</span>
+		<span class="k">print</span> <span class="s">&#39;MCMCConstrainer stats: nsteps: </span><span class="si">%d</span><span class="s">, </span><span class="si">%.3f%%</span><span class="s"> accepts, </span><span class="si">%.3f%%</span><span class="s"> skipped (</span><span class="si">%d</span><span class="s">)&#39;</span> <span class="o">%</span> <span class="p">(</span>
+			<span class="n">n</span><span class="p">,</span> <span class="n">ar</span><span class="p">,</span> <span class="n">boost</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nskip</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">ar</span> <span class="o">&lt;</span> <span class="mi">85</span><span class="p">:</span>
+			<span class="k">print</span> <span class="s">&#39;proposal_scale = </span><span class="si">%s</span><span class="s"> (too large!, too few accepts)&#39;</span> <span class="o">%</span> <span class="n">proposal_scale</span>
+		<span class="k">elif</span> <span class="n">ar</span> <span class="o">&gt;</span> <span class="mi">95</span><span class="p">:</span>
+			<span class="k">print</span> <span class="s">&#39;proposal_scale = </span><span class="si">%s</span><span class="s"> (too small!, too many accepts)&#39;</span> <span class="o">%</span> <span class="n">proposal_scale</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">print</span> <span class="s">&#39;proposal_scale = </span><span class="si">%s</span><span class="s"> (good by accepts)&#39;</span> <span class="o">%</span> <span class="n">proposal_scale</span>
+
+</div>
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&#39;__main__&#39;</span><span class="p">:</span>
+	<span class="c"># gauss likelihood, sample at 1sigma</span>
+	<span class="n">ndim</span> <span class="o">=</span> <span class="mi">10</span>
+	<span class="n">Lmin</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+	<span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+	<span class="k">def</span> <span class="nf">priortransform</span><span class="p">(</span><span class="n">u</span><span class="p">):</span> <span class="k">return</span> <span class="n">u</span>
+	<span class="k">def</span> <span class="nf">loglikelihood</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>  <span class="k">return</span> <span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="p">(((</span><span class="n">x</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">/</span><span class="mf">0.3</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+	<span class="n">startpoint</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">ndim</span><span class="p">)</span>
+	
+	<span class="n">live_points</span> <span class="o">=</span> <span class="p">[]</span>
+	<span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">live_points</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">100</span><span class="p">:</span>
+		<span class="n">p</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">ndim</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">loglikelihood</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">Lmin</span><span class="p">:</span>
+			<span class="n">live_points</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">p</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">Lmin</span><span class="p">))</span>
+	<span class="k">print</span> <span class="s">&#39;have live points&#39;</span>
+	
+	<span class="c">#constrainer = GalileanRadFriendsConstrainer(100, ndim, </span>
+	<span class="c">#	velocity_scale = 1, nsteps = 200, plot=3)</span>
+	<span class="n">constrainer</span> <span class="o">=</span> <span class="n">MCMCRadFriendsConstrainer</span><span class="p">(</span><span class="n">proposal_scale</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">nsteps</span> <span class="o">=</span> <span class="mi">40</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+	<span class="c">#constrainer.phase = 2</span>
+	<span class="k">for</span> <span class="n">starti</span><span class="p">,</span> <span class="p">(</span><span class="n">startu</span><span class="p">,</span> <span class="n">startx</span><span class="p">,</span> <span class="n">startL</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">live_points</span><span class="p">):</span>
+		<span class="n">u</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="n">constrainer</span><span class="o">.</span><span class="n">draw_constrained</span><span class="p">(</span><span class="n">Lmin</span><span class="o">=</span><span class="n">Lmin</span><span class="p">,</span> 
+			<span class="n">priortransform</span><span class="o">=</span><span class="n">priortransform</span><span class="p">,</span> <span class="n">loglikelihood</span><span class="o">=</span><span class="n">loglikelihood</span><span class="p">,</span> <span class="n">ndim</span><span class="o">=</span><span class="n">ndim</span><span class="p">,</span> 
+			<span class="n">startu</span><span class="o">=</span><span class="n">startu</span><span class="p">,</span> <span class="n">startx</span><span class="o">=</span><span class="n">startx</span><span class="p">,</span> <span class="n">startL</span><span class="o">=</span><span class="n">startL</span><span class="p">,</span> <span class="n">starti</span><span class="o">=</span><span class="n">starti</span><span class="p">,</span>
+			<span class="n">previous</span><span class="o">=</span><span class="n">live_points</span><span class="p">)</span>
+		<span class="c">#print u, L</span>
+		<span class="c">#break</span>
+	
+	<span class="n">constrainer</span><span class="o">.</span><span class="n">stats</span><span class="p">()</span>
+	
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">Nested Sampling 1.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013-2014, Johannes Buchner.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>

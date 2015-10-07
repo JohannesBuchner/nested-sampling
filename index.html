@@ -1,0 +1,251 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Nested Sampling Development Framework &amp; UltraNest &mdash; Nested Sampling 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Nested Sampling 1.0 documentation" href="#" />
+    <link rel="next" title="Nested Sampling Integration" href="integrator.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="integrator.html" title="Nested Sampling Integration"
+             accesskey="N">next</a> |</li>
+        <li><a href="#">Nested Sampling 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="nested-sampling-development-framework-ultranest">
+<h1>Nested Sampling Development Framework &amp; UltraNest<a class="headerlink" href="#nested-sampling-development-framework-ultranest" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="about">
+<h2>About<a class="headerlink" href="#about" title="Permalink to this headline">¶</a></h2>
+<p>A Pythonic, modular implementation of the Nested Sampling integration algorithm
+for Bayesian model comparison and parameter estimation.</p>
+<p>This package consists of three parts:</p>
+<ol class="arabic simple">
+<li>Python package for <a class="reference internal" href="#nested-sampling"><em>integration using Nested Sampling</em></a></li>
+<li>Python framework for <a class="reference internal" href="test.html"><em>testing/benchmarking Nested Sampling</em></a></li>
+<li><a class="reference external" href="ultranest/doc/api/index.html">UltraNest</a>: A C drop-in replacement for MultiNest</li>
+</ol>
+</div>
+<div class="section" id="pythonic-nested-sampling">
+<span id="nested-sampling"></span><h2>Pythonic Nested Sampling<a class="headerlink" href="#pythonic-nested-sampling" title="Permalink to this headline">¶</a></h2>
+<p>Nested Sampling consists of three software components:</p>
+<ol class="arabic simple">
+<li>The <a class="reference internal" href="integrator.html#nested-integrator"><em>Nested Sampling integrator</em></a>.
+It performs the nested sampling integration itself, and computes the evidence.
+This component is very well understood theoretically.</li>
+<li>The <a class="reference internal" href="integrator.html#nested-sampler"><em>Sampler</em></a>.
+It keeps the current live points sorted, and replaces the least likely point
+in each iteration, using the next component.
+This component is trivial.</li>
+<li>The <a class="reference internal" href="drawing.html"><em>Constrained Drawing function</em></a>.
+A method that samples point uniformly from the prior, subject to that their
+likelihood is above a given value.
+This package provides multiple implementations for constrained drawing functions,
+namely <strong>rejection sampling</strong> (the simplest), <strong>MCMC</strong>, <strong>RadFriends</strong>/<strong>SupFriends</strong>, <strong>Hamiltonian Monte Carlo</strong>.
+See the documentation of <a class="reference internal" href="drawing.html#constrained-draw"><em>Implemented Constrained Drawing Functions</em></a> for more details.
+This component is subject of current research.</li>
+</ol>
+<p>The <a class="reference internal" href="test.html"><em>Test Suite</em></a> can be used to evaluate the correctness, accuracy and efficiency of various
+implementations.</p>
+</div>
+<div class="section" id="setting-up-a-problem">
+<h2>Setting up a problem<a class="headerlink" href="#setting-up-a-problem" title="Permalink to this headline">¶</a></h2>
+<p>The problem is specified via a coordinate transform from the unit cube
+(<em>priortransform</em>), and the logarithm of the likelihood:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">log</span><span class="p">,</span> <span class="n">pi</span>
+
+<span class="c"># set dimensionality</span>
+<span class="n">ndim</span> <span class="o">=</span> <span class="mi">2</span>
+
+<span class="k">def</span> <span class="nf">priortransform</span><span class="p">(</span><span class="n">u</span><span class="p">):</span>
+        <span class="c"># linear transform into [-1 : 1] interval</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">u</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">x</span>
+
+<span class="k">def</span> <span class="nf">loglikelihood</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="p">(((</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">/</span><span class="mf">0.03</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="p">(((</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">/</span><span class="mf">0.03</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">log</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">pi</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">log</span><span class="p">(</span><span class="mf">0.03</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span>
+</pre></div>
+</div>
+<p>To integrate, we need the integrator and sampler, and we need to choose a
+constrained drawing function.</p>
+<p>Here, we use the simplest setup:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">nested_integrator</span> <span class="kn">import</span> <span class="n">nested_integrator</span>
+<span class="kn">from</span> <span class="nn">nested_sampler</span> <span class="kn">import</span> <span class="n">NestedSampler</span>
+
+<span class="c"># choose constrainer</span>
+<span class="c"># a more specialised constrainer may take more arguments</span>
+<span class="kn">from</span> <span class="nn">samplers.rejection</span> <span class="kn">import</span> <span class="n">RejectionConstrainer</span> <span class="k">as</span> <span class="n">Constrainer</span>
+<span class="n">constrainer</span> <span class="o">=</span> <span class="n">Constrainer</span><span class="p">()</span>
+
+<span class="k">print</span> <span class="s">&#39;preparing sampler...&#39;</span>
+<span class="n">sampler</span> <span class="o">=</span> <span class="n">NestedSampler</span><span class="p">(</span><span class="n">nlive_points</span> <span class="o">=</span> <span class="mi">400</span><span class="p">,</span> <span class="c"># number of live points</span>
+        <span class="c"># problem</span>
+        <span class="n">priortransform</span><span class="o">=</span><span class="n">priortransform</span><span class="p">,</span>
+        <span class="n">loglikelihood</span><span class="o">=</span><span class="n">loglikelihood</span><span class="p">,</span>
+        <span class="c"># constrained drawing function</span>
+        <span class="n">draw_constrained</span> <span class="o">=</span> <span class="n">constrainer</span><span class="o">.</span><span class="n">draw_constrained</span><span class="p">,</span>
+        <span class="n">ndim</span><span class="o">=</span><span class="n">ndim</span> <span class="c"># dimensionality</span>
+        <span class="p">)</span>
+<span class="c"># tell constrainer about sampler so they can interact</span>
+<span class="n">constrainer</span><span class="o">.</span><span class="n">sampler</span> <span class="o">=</span> <span class="n">sampler</span>
+
+<span class="k">print</span> <span class="s">&#39;running sampler...&#39;</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">nested_integrator</span><span class="p">(</span><span class="n">tolerance</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">sampler</span><span class="o">=</span><span class="n">sampler</span><span class="p">)</span>
+
+<span class="k">print</span> <span class="s">&#39;nested sampling (</span><span class="si">%d</span><span class="s"> samples) logZ = &#39;</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s">&#39;samples&#39;</span><span class="p">]),</span> <span class="n">result</span><span class="p">[</span><span class="s">&#39;logZ&#39;</span><span class="p">],</span> <span class="n">result</span><span class="p">[</span><span class="s">&#39;logZerr&#39;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Find out more about the implemented <a class="reference internal" href="drawing.html#constrained-draw"><em>Constrained Drawing Functions</em></a>.</p>
+</div>
+<div class="section" id="citing-this-work">
+<h2>Citing this work<a class="headerlink" href="#citing-this-work" title="Permalink to this headline">¶</a></h2>
+<p>The correct citation to use is Buchner (2014) published in Statistics and Computing.</p>
+<p>BibTeX:</p>
+<div class="highlight-python"><div class="highlight"><pre>@Article{Buchner2014stats,
+  Title                    = {{A statistical test for Nested Sampling algorithms}},
+  Author                   = {Buchner, Johannes},
+  Year                     = {2014},
+  Doi                      = {10.1007/s11222-014-9512-y},
+  Eprint                   = {1407.5459},
+  ISSN                     = {0960-3174},
+  Language                 = {English},
+  Month                    = jul,
+  Pages                    = {1-10},
+
+  Adsnote                  = {Provided by the SAO/NASA Astrophysics Data System},
+  Adsurl                   = {http://adsabs.harvard.edu/abs/2014arXiv1407.5459B},
+  Archiveprefix            = {arXiv},
+  Journal                  = {Statistics and Computing},
+  Keywords                 = {Nested sampling; MCMC; Bayesian inference; Evidence; Test; Marginal likelihood},
+  Owner                    = {user},
+  Primaryclass             = {stat.CO},
+  Publisher                = {Springer US},
+  Timestamp                = {2014.08.20}
+}
+</pre></div>
+</div>
+</div>
+<div class="section" id="documentation">
+<h2>Documentation:<a class="headerlink" href="#documentation" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="integrator.html">Nested Sampling Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integrator.html#sampler">Sampler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Benchmark/Test Suite</a></li>
+<li class="toctree-l1"><a class="reference internal" href="drawing.html">Constrained Drawing Functions</a></li>
+</ul>
+</div>
+</div>
+<div class="section" id="indices-and-tables">
+<h2>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><em>Index</em></a></li>
+<li><a class="reference internal" href="py-modindex.html"><em>Module Index</em></a></li>
+<li><a class="reference internal" href="search.html"><em>Search Page</em></a></li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="#">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Nested Sampling Development Framework &amp; UltraNest</a><ul>
+<li><a class="reference internal" href="#about">About</a></li>
+<li><a class="reference internal" href="#pythonic-nested-sampling">Pythonic Nested Sampling</a></li>
+<li><a class="reference internal" href="#setting-up-a-problem">Setting up a problem</a></li>
+<li><a class="reference internal" href="#citing-this-work">Citing this work</a></li>
+<li><a class="reference internal" href="#documentation">Documentation:</a></li>
+<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Next topic</h4>
+  <p class="topless"><a href="integrator.html"
+                        title="next chapter">Nested Sampling Integration</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/index.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="integrator.html" title="Nested Sampling Integration"
+             >next</a> |</li>
+        <li><a href="#">Nested Sampling 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013-2014, Johannes Buchner.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    </div>
+  </body>
+</html>
