@@ -43,6 +43,15 @@ Additionally to nested sampling implemented here, the following algorithms are e
   * Cuhre (through PyCuba)
   * Vegas (through PyCuba)
 
+The evaluation of various algorithms can be found at https://johannesbuchner.github.io/UltraNest/testsuite/
+
+UltraNest
+----------------
+
+UltraNest is a fast C implementation of a mixed RadFriends/MCMC nested sampling algorithm.
+It is documented at https://johannesbuchner.github.io/UltraNest/ultranest/
+You are welcome to dive into the code (ultranest folder) and implement your 
+preferred algorithm.
 
 Getting started
 ----------------
