@@ -37,6 +37,7 @@ Additionally to nested sampling implemented here, the following algorithms are e
 
 * MultiNest (through PyMultiNest)
 * Cuba-based algorithms (through PyCuba)
+
   * Suave 
   * Divonne (through PyCuba)
   * Cuhre (through PyCuba)
