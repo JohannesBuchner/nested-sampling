@@ -11,7 +11,7 @@ This package consists of three parts:
 
 1. Python package for :ref:`integration using Nested Sampling <nested-sampling>`
 2. Python framework for :doc:`testing/benchmarking Nested Sampling <test>`
-3. `UltraNest <ultranest/doc/api/index.html>`_: A C drop-in replacement for MultiNest
+3. `UltraNest <ultranest/index.html>`_: A C drop-in replacement for MultiNest
 
 .. _nested-sampling:
 

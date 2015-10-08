@@ -17,6 +17,8 @@ according to characteristics, such as
 * low-dimensional (<7), medium-dimensional (7-20), high-dimensional (30-1000)
 * simple peak shape vs peculiar shapes (e.g. bananas, funnels, multiple scales in modes)
 
+The evaluation of various algorithms can be found at https://johannesbuchner.github.io/UltraNest/testsuite/
+
 Algorithms available
 ----------------------
 
