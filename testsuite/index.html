@@ -1,0 +1,570 @@
+
+<html>
+<head>
+	<title>Nested Sampling Algorithm comparison</title>
+<link rel="stylesheet" href="style.css" type="text/css" />
+</head>
+<body>
+<h1>Comparison of Nested Sampling and Importance Sampling algorithms</h1>
+<p>All test problems are evaluated 10 times for each algorithm. 
+The tolerance aimed for is 0.1.
+<p><b>Maintainer</b>: Johannes Buchner &lt;johannes.buchner.acad [@] gmx.com&gt;
+
+
+
+<h2><a name="shell2d"">shell2d</a> 
+<a href="#shell2d" class="paralink">&para;</a></h2>
+<div class="problem"><p>A gaussian shell, in 2 dimensions.
+	Width of shells: 0.00833333333333, radius: 0.166666666667, centers: [ 0.3  0.7]
+	
+	<p>From <a href="http://arxiv.org/abs/0704.3704">MultiNest</a> 
+	<a href="http://arxiv.org/abs/0809.3437">papers</a></p>
+	
+<p class="analytic">Analytic solution: 0.7393</div>
+<table>
+<thead>
+<tr><th>Algorithm</th>
+<th>Rank</th>
+<th>Z Result</th>
+<th>Accuracy</th>
+<th>Claimed accuracy</th>
+<th>evaluations</th>
+</thead>
+<tbody>
+<tr><th>cuba-Vegas</th><td>1</td>
+					<td class="result-ok">0.7123</td>
+					<td class="result-ok">0.0859</td>
+					<td class="result-ok">0.1173</td>
+					<td>1000</td>
+				</tr>
+<tr><th>cuba-Suave</th><td>1 =</td>
+					<td class="result-ok">0.7123</td>
+					<td class="result-ok">0.0859</td>
+					<td class="result-ok">0.1173</td>
+					<td>1000</td>
+				</tr>
+<tr><th>cuba-Divonne</th><td>2 (speed)</td>
+					<td class="result-ok">0.8663</td>
+					<td class="result-ok">0.1271</td>
+					<td class="result-ok">0.0862</td>
+					<td>3748</td>
+				</tr>
+<tr><th>multinest-nlive400</th><td>2 =</td>
+					<td class="result-ok">0.7295</td>
+					<td class="result-ok">0.0727</td>
+					<td class="result-ok">0.0813</td>
+					<td>5960</td>
+				</tr>
+<tr><th>multinest-nlive400-INS</th><td>2 =</td>
+					<td class="result-ok">0.7686</td>
+					<td class="result-ok">0.0345</td>
+					<td class="result-ok">0.0207</td>
+					<td>6007</td>
+				</tr>
+<tr><th>cuba-Cuhre</th><td>2 =</td>
+					<td class="result-ok">0.7387</td>
+					<td class="result-ok">0.0006</td>
+					<td class="result-ok">0.3988</td>
+					<td>6565</td>
+				</tr>
+<tr><th>NS-radfriends-nlive400</th><td>3 (speed)</td>
+					<td class="result-ok">0.7238</td>
+					<td class="result-ok">0.0677</td>
+					<td class="result-ok">0.4993</td>
+					<td>7538</td>
+				</tr>
+<tr><th>NS-supfriends-nlive400</th><td>3 =</td>
+					<td class="result-ok">0.7238</td>
+					<td class="result-ok">0.0677</td>
+					<td class="result-ok">0.4993</td>
+					<td>7538</td>
+				</tr>
+<tr><th>NS-radfriends-nlive1000</th><td>3 =</td>
+					<td class="result-ok">0.7729</td>
+					<td class="result-ok">0.0456</td>
+					<td class="result-ok">0.4998</td>
+					<td>13711</td>
+				</tr>
+<tr><th>NS-supfriends-nlive1000</th><td>3 =</td>
+					<td class="result-ok">0.7729</td>
+					<td class="result-ok">0.0456</td>
+					<td class="result-ok">0.4998</td>
+					<td>13711</td>
+				</tr>
+<tr><th>multinest-nlive1000</th><td>3 =</td>
+					<td class="result-ok">0.7348</td>
+					<td class="result-ok">0.0404</td>
+					<td class="result-ok">0.0513</td>
+					<td>14887</td>
+				</tr>
+<tr><th>multinest-nlive1000-INS</th><td>3 =</td>
+					<td class="result-ok">0.7817</td>
+					<td class="result-ok">0.0458</td>
+					<td class="result-wrong">0.0131</td>
+					<td>14947</td>
+				</tr>
+</tbody>
+</table>
+
+<h2><a name="shell10d"">shell10d</a> 
+<a href="#shell10d" class="paralink">&para;</a></h2>
+<div class="problem"><p>A gaussian shell, in 10 dimensions.
+	Width of shells: 0.00833333333333, radius: 0.166666666667, centers: [ 0.3  0.7]
+	
+	<p>From <a href="http://arxiv.org/abs/0704.3704">MultiNest</a> 
+	<a href="http://arxiv.org/abs/0809.3437">papers</a></p>
+	
+<p class="analytic">Analytic solution: -12.1056</div>
+<table>
+<thead>
+<tr><th>Algorithm</th>
+<th>Rank</th>
+<th>Z Result</th>
+<th>Accuracy</th>
+<th>Claimed accuracy</th>
+<th>evaluations</th>
+</thead>
+<tbody>
+<tr><th>multinest-nlive400</th><td>1</td>
+					<td class="result-ok">-11.9064</td>
+					<td class="result-ok">0.2794</td>
+					<td class="result-ok">0.1949</td>
+					<td>24902</td>
+				</tr>
+<tr><th>multinest-nlive400-INS</th><td>1 =</td>
+					<td class="result-ok">-12.1421</td>
+					<td class="result-ok">0.0728</td>
+					<td class="result-wrong">0.0230</td>
+					<td>25046</td>
+				</tr>
+<tr><th>multinest-nlive1000-INS</th><td>2 (speed)</td>
+					<td class="result-ok">-12.0962</td>
+					<td class="result-ok">0.0131</td>
+					<td class="result-ok">0.0146</td>
+					<td>60724</td>
+				</tr>
+<tr><th>multinest-nlive1000</th><td>2 =</td>
+					<td class="result-ok">-11.8556</td>
+					<td class="result-ok">0.2782</td>
+					<td class="result-wrong">0.1230</td>
+					<td>61446</td>
+				</tr>
+<tr><th>NS-radfriends-nlive400</th><td>3 (speed)</td>
+					<td class="result-ok">-12.1540</td>
+					<td class="result-ok">0.1357</td>
+					<td class="result-ok">0.4996</td>
+					<td>651908</td>
+				</tr>
+<tr><th>NS-supfriends-nlive400</th><td>3 =</td>
+					<td class="result-ok">-12.1540</td>
+					<td class="result-ok">0.1357</td>
+					<td class="result-ok">0.4996</td>
+					<td>651908</td>
+				</tr>
+<tr><th>NS-radfriends-nlive1000</th><td>3 =</td>
+					<td class="result-ok">-12.0950</td>
+					<td class="result-ok">0.0928</td>
+					<td class="result-ok">0.4998</td>
+					<td>1123983</td>
+				</tr>
+<tr><th>NS-supfriends-nlive1000</th><td>3 =</td>
+					<td class="result-ok">-12.0950</td>
+					<td class="result-ok">0.0928</td>
+					<td class="result-ok">0.4998</td>
+					<td>1123983</td>
+				</tr>
+<tr><th>cuba-Cuhre</th><td>4 (accuracy)</td>
+					<td class="result-wrong">-566.1907</td>
+					<td class="result-wrong">554.0851</td>
+					<td class="result-wrong">0.8825</td>
+					<td>7815</td>
+				</tr>
+<tr><th>cuba-Divonne</th><td>5 (misleading)</td>
+					<td class="result-wrong">-14.7354</td>
+					<td class="result-wrong">2.7079</td>
+					<td class="result-wrong">0.2775</td>
+					<td>13176</td>
+				</tr>
+<tr><th>cuba-Vegas***</th><td>6 (failed)</td>
+					<td class="result-wrong">(failure)</td>
+					<td class="result-wrong">(failure)</td>
+					<td class="result-wrong">(failure)</td>
+					<td>2002000</td>
+				</tr>
+<tr><th>cuba-Suave</th><td>7 (misleading)</td>
+					<td class="result-wrong">nan</td>
+					<td class="result-wrong">nan</td>
+					<td class="result-wrong">nan</td>
+					<td>926770</td>
+				</tr>
+</tbody>
+</table>
+
+<h2><a name="eggbox"">eggbox</a> 
+<a href="#eggbox" class="paralink">&para;</a></h2>
+<div class="problem"><p>
+	Eggbox problem (2d). Highly multimodal.
+	<p>The analytic value has been <a href="http://arxiv.org/abs/0809.3437">computed by fine numerical integration</a></p>
+	
+	
+<p class="analytic">Analytic solution: 235.8800</div>
+<table>
+<thead>
+<tr><th>Algorithm</th>
+<th>Rank</th>
+<th>Z Result</th>
+<th>Accuracy</th>
+<th>Claimed accuracy</th>
+<th>evaluations</th>
+</thead>
+<tbody>
+<tr><th>multinest-nlive400-INS</th><td>1</td>
+					<td class="result-ok">235.9058</td>
+					<td class="result-ok">0.1008</td>
+					<td class="result-ok">0.0680</td>
+					<td>10595</td>
+				</tr>
+<tr><th>multinest-nlive400</th><td>1 =</td>
+					<td class="result-ok">235.9216</td>
+					<td class="result-ok">0.1053</td>
+					<td class="result-ok">0.1235</td>
+					<td>11077</td>
+				</tr>
+<tr><th>cuba-Cuhre</th><td>1 =</td>
+					<td class="result-ok">235.4672</td>
+					<td class="result-ok">0.4128</td>
+					<td class="result-ok">0.4016</td>
+					<td>15535</td>
+				</tr>
+<tr><th>multinest-nlive1000-INS</th><td>2 (speed)</td>
+					<td class="result-ok">235.8418</td>
+					<td class="result-ok">0.0418</td>
+					<td class="result-wrong">0.0167</td>
+					<td>25601</td>
+				</tr>
+<tr><th>multinest-nlive1000</th><td>2 =</td>
+					<td class="result-ok">235.9082</td>
+					<td class="result-ok">0.0854</td>
+					<td class="result-ok">0.0782</td>
+					<td>26375</td>
+				</tr>
+<tr><th>NS-radfriends-nlive1000</th><td>2 =</td>
+					<td class="result-ok">235.8038</td>
+					<td class="result-ok">0.1045</td>
+					<td class="result-ok">0.4997</td>
+					<td>33736</td>
+				</tr>
+<tr><th>NS-supfriends-nlive1000</th><td>2 =</td>
+					<td class="result-ok">235.8038</td>
+					<td class="result-ok">0.1045</td>
+					<td class="result-ok">0.4997</td>
+					<td>33736</td>
+				</tr>
+<tr><th>cuba-Divonne</th><td>3 (speed)</td>
+					<td class="result-ok">235.8583</td>
+					<td class="result-ok">0.0217</td>
+					<td class="result-ok">0.0489</td>
+					<td>156447</td>
+				</tr>
+<tr><th>NS-radfriends-nlive400</th><td>4 (speed)</td>
+					<td class="result-ok">235.7985</td>
+					<td class="result-ok">0.1074</td>
+					<td class="result-ok">0.4995</td>
+					<td>388408</td>
+				</tr>
+<tr><th>NS-supfriends-nlive400</th><td>4 =</td>
+					<td class="result-ok">235.7985</td>
+					<td class="result-ok">0.1074</td>
+					<td class="result-ok">0.4995</td>
+					<td>388408</td>
+				</tr>
+<tr><th>cuba-Vegas</th><td>5 (misleading)</td>
+					<td class="result-ok">235.4185</td>
+					<td class="result-wrong">0.8066</td>
+					<td class="result-wrong">0.2512</td>
+					<td>2700</td>
+				</tr>
+<tr><th>cuba-Suave</th><td>6 (accuracy)</td>
+					<td class="result-wrong">235.0552</td>
+					<td class="result-wrong">0.9473</td>
+					<td class="result-wrong">0.2892</td>
+					<td>3800</td>
+				</tr>
+</tbody>
+</table>
+
+<h2><a name="funnel2d"">funnel2d</a> 
+<a href="#funnel2d" class="paralink">&para;</a></h2>
+<div class="problem"><p>A gaussian with mean 0.5, stdev first parameter.
+	In 2 dimensions. Unimodal and peculariar shape, heavy contributions off-maximum.
+	<p>TODO: the analytic value has not been verified</p>
+	
+<p class="analytic">Analytic solution: -1.6600</div>
+<table>
+<thead>
+<tr><th>Algorithm</th>
+<th>Rank</th>
+<th>Z Result</th>
+<th>Accuracy</th>
+<th>Claimed accuracy</th>
+<th>evaluations</th>
+</thead>
+<tbody>
+<tr><th>cuba-Vegas</th><td>1</td>
+					<td class="result-ok">-1.9205</td>
+					<td class="result-ok">0.3902</td>
+					<td class="result-ok">0.2499</td>
+					<td>1300</td>
+				</tr>
+<tr><th>cuba-Suave</th><td>1 =</td>
+					<td class="result-ok">-1.9140</td>
+					<td class="result-ok">0.3818</td>
+					<td class="result-ok">0.2874</td>
+					<td>1400</td>
+				</tr>
+<tr><th>cuba-Divonne</th><td>2 (speed)</td>
+					<td class="result-ok">-1.6160</td>
+					<td class="result-ok">0.0440</td>
+					<td class="result-ok">0.1375</td>
+					<td>2947</td>
+				</tr>
+<tr><th>multinest-nlive400-INS</th><td>3 (speed)</td>
+					<td class="result-ok">-1.6269</td>
+					<td class="result-ok">0.1436</td>
+					<td class="result-wrong">0.0632</td>
+					<td>12112</td>
+				</tr>
+<tr><th>multinest-nlive400</th><td>3 =</td>
+					<td class="result-ok">-1.8214</td>
+					<td class="result-ok">0.2376</td>
+					<td class="result-wrong">0.1037</td>
+					<td>12178</td>
+				</tr>
+<tr><th>cuba-Cuhre</th><td>3 =</td>
+					<td class="result-ok">-1.3874</td>
+					<td class="result-ok">0.2726</td>
+					<td class="result-ok">0.3957</td>
+					<td>21515</td>
+				</tr>
+<tr><th>multinest-nlive1000</th><td>4 (speed)</td>
+					<td class="result-ok">-1.5043</td>
+					<td class="result-ok">0.3108</td>
+					<td class="result-wrong">0.0714</td>
+					<td>36279</td>
+				</tr>
+<tr><th>multinest-nlive1000-INS</th><td>4 =</td>
+					<td class="result-ok">-1.4542</td>
+					<td class="result-ok">0.2802</td>
+					<td class="result-wrong">0.0579</td>
+					<td>36531</td>
+				</tr>
+<tr><th>NS-radfriends-nlive1000</th><td>5 (speed)</td>
+					<td class="result-ok">-1.3621</td>
+					<td class="result-ok">0.3702</td>
+					<td class="result-ok">1.2574</td>
+					<td>653852</td>
+				</tr>
+<tr><th>NS-supfriends-nlive1000</th><td>5 =</td>
+					<td class="result-ok">-1.3621</td>
+					<td class="result-ok">0.3702</td>
+					<td class="result-ok">1.2574</td>
+					<td>653852</td>
+				</tr>
+<tr><th>NS-radfriends-nlive400</th><td>6 (accuracy)</td>
+					<td class="result-ok">-1.3122</td>
+					<td class="result-wrong">0.5211</td>
+					<td class="result-ok">1.3051</td>
+					<td>657413</td>
+				</tr>
+<tr><th>NS-supfriends-nlive400</th><td>6 =</td>
+					<td class="result-ok">-1.3122</td>
+					<td class="result-wrong">0.5211</td>
+					<td class="result-ok">1.3051</td>
+					<td>657413</td>
+				</tr>
+</tbody>
+</table>
+
+<h2><a name="loggamma_multimodal2d"">loggamma_multimodal2d</a> 
+<a href="#loggamma_multimodal2d" class="paralink">&para;</a></h2>
+<div class="problem"><p>Combination of Gaussian and LogGamma distributions.
+	In 2 dimensions. Multi-modal (4), heavy-tailed.
+	
+<p class="analytic">Analytic solution: 0.0000</div>
+<table>
+<thead>
+<tr><th>Algorithm</th>
+<th>Rank</th>
+<th>Z Result</th>
+<th>Accuracy</th>
+<th>Claimed accuracy</th>
+<th>evaluations</th>
+</thead>
+<tbody>
+<tr><th>cuba-Vegas</th><td>1</td>
+					<td class="result-ok">0.0036</td>
+					<td class="result-ok">0.1215</td>
+					<td class="result-ok">0.1152</td>
+					<td>1000</td>
+				</tr>
+<tr><th>cuba-Suave</th><td>1 =</td>
+					<td class="result-ok">0.0036</td>
+					<td class="result-ok">0.1215</td>
+					<td class="result-ok">0.1152</td>
+					<td>1000</td>
+				</tr>
+<tr><th>cuba-Cuhre</th><td>1 =</td>
+					<td class="result-ok">0.0232</td>
+					<td class="result-ok">0.0232</td>
+					<td class="result-ok">0.3792</td>
+					<td>1365</td>
+				</tr>
+<tr><th>cuba-Divonne</th><td>2 (speed)</td>
+					<td class="result-ok">-0.0039</td>
+					<td class="result-ok">0.0039</td>
+					<td class="result-ok">0.0229</td>
+					<td>2319</td>
+				</tr>
+<tr><th>NS-radfriends-nlive400</th><td>3 (speed)</td>
+					<td class="result-ok">0.1069</td>
+					<td class="result-ok">0.1233</td>
+					<td class="result-ok">0.4995</td>
+					<td>5258</td>
+				</tr>
+<tr><th>NS-supfriends-nlive400</th><td>3 =</td>
+					<td class="result-ok">0.0984</td>
+					<td class="result-ok">0.1424</td>
+					<td class="result-ok">0.4993</td>
+					<td>5493</td>
+				</tr>
+<tr><th>multinest-nlive400</th><td>3 =</td>
+					<td class="result-ok">0.0058</td>
+					<td class="result-ok">0.0756</td>
+					<td class="result-ok">0.0777</td>
+					<td>5858</td>
+				</tr>
+<tr><th>multinest-nlive400-INS</th><td>3 =</td>
+					<td class="result-ok">0.0348</td>
+					<td class="result-ok">0.0383</td>
+					<td class="result-wrong">0.0165</td>
+					<td>5902</td>
+				</tr>
+<tr><th>NS-radfriends-nlive1000</th><td>4 (speed)</td>
+					<td class="result-ok">0.0866</td>
+					<td class="result-ok">0.0958</td>
+					<td class="result-ok">0.4998</td>
+					<td>11451</td>
+				</tr>
+<tr><th>NS-supfriends-nlive1000</th><td>4 =</td>
+					<td class="result-ok">0.0812</td>
+					<td class="result-ok">0.1025</td>
+					<td class="result-ok">0.4998</td>
+					<td>11647</td>
+				</tr>
+<tr><th>multinest-nlive1000</th><td>4 =</td>
+					<td class="result-ok">-0.0019</td>
+					<td class="result-ok">0.0590</td>
+					<td class="result-ok">0.0491</td>
+					<td>14366</td>
+				</tr>
+<tr><th>multinest-nlive1000-INS</th><td>4 =</td>
+					<td class="result-ok">0.0399</td>
+					<td class="result-ok">0.0442</td>
+					<td class="result-wrong">0.0104</td>
+					<td>14576</td>
+				</tr>
+</tbody>
+</table>
+
+<h2><a name="loggamma_multimodal10d"">loggamma_multimodal10d</a> 
+<a href="#loggamma_multimodal10d" class="paralink">&para;</a></h2>
+<div class="problem"><p>Combination of Gaussian and LogGamma distributions.
+	In 10 dimensions. Multi-modal (4), heavy-tailed.
+	
+<p class="analytic">Analytic solution: 0.0000</div>
+<table>
+<thead>
+<tr><th>Algorithm</th>
+<th>Rank</th>
+<th>Z Result</th>
+<th>Accuracy</th>
+<th>Claimed accuracy</th>
+<th>evaluations</th>
+</thead>
+<tbody>
+<tr><th>multinest-nlive400-INS</th><td>1</td>
+					<td class="result-ok">0.1978</td>
+					<td class="result-ok">0.2711</td>
+					<td class="result-wrong">0.0963</td>
+					<td>71447</td>
+				</tr>
+<tr><th>multinest-nlive1000-INS</th><td>2 (speed)</td>
+					<td class="result-ok">0.1224</td>
+					<td class="result-ok">0.1276</td>
+					<td class="result-wrong">0.0372</td>
+					<td>165827</td>
+				</tr>
+<tr><th>NS-radfriends-nlive400</th><td>3 (speed)</td>
+					<td class="result-ok">0.0615</td>
+					<td class="result-ok">0.2322</td>
+					<td class="result-ok">0.2080</td>
+					<td>2251442</td>
+				</tr>
+<tr><th>NS-radfriends-nlive1000</th><td>3 =</td>
+					<td class="result-ok">0.0179</td>
+					<td class="result-ok">0.1286</td>
+					<td class="result-ok">0.1316</td>
+					<td>3781340</td>
+				</tr>
+<tr><th>NS-supfriends-nlive400</th><td>4 (speed)</td>
+					<td class="result-ok">-0.0248</td>
+					<td class="result-ok">0.1025</td>
+					<td class="result-ok">0.2099</td>
+					<td>17136103</td>
+				</tr>
+<tr><th>NS-supfriends-nlive1000</th><td>5 (accuracy)</td>
+					<td class="result-ok">0.0323</td>
+					<td class="result-wrong">0.5400</td>
+					<td class="result-ok">0.3235</td>
+					<td>19763999</td>
+				</tr>
+<tr><th>cuba-Divonne</th><td>6 (misleading)</td>
+					<td class="result-wrong">-0.8964</td>
+					<td class="result-wrong">0.8964</td>
+					<td class="result-wrong">0.2078</td>
+					<td>59045</td>
+				</tr>
+<tr><th>multinest-nlive1000</th><td>7 (accuracy)</td>
+					<td class="result-wrong">0.9916</td>
+					<td class="result-wrong">0.9941</td>
+					<td class="result-wrong">0.1289</td>
+					<td>162111</td>
+				</tr>
+<tr><th>multinest-nlive400</th><td>8 (accuracy)</td>
+					<td class="result-wrong">1.1740</td>
+					<td class="result-wrong">1.1790</td>
+					<td class="result-wrong">0.2028</td>
+					<td>71835</td>
+				</tr>
+<tr><th>cuba-Suave</th><td>9 (accuracy)</td>
+					<td class="result-wrong">-5.1840</td>
+					<td class="result-wrong">5.8148</td>
+					<td class="result-wrong">0.3595</td>
+					<td>34003</td>
+				</tr>
+<tr><th>cuba-Cuhre***</th><td>10 (failed)</td>
+					<td class="result-wrong">(failure)</td>
+					<td class="result-wrong">(failure)</td>
+					<td class="result-wrong">(failure)</td>
+					<td>2003245</td>
+				</tr>
+<tr><th>cuba-Vegas***</th><td>11 (accuracy)</td>
+					<td class="result-wrong">(failure)</td>
+					<td class="result-wrong">(failure)</td>
+					<td class="result-wrong">(failure)</td>
+					<td>2002000</td>
+				</tr>
+</tbody>
+</table>
+
+</html>

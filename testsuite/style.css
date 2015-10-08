@@ -1,0 +1,23 @@
+h2 a.paralink {
+	font-size: smaller;
+	color: #EEE;
+}
+h2 a.paralink:hover {
+	color: #CCC;
+}
+div.problem {
+margin: 0.3em 1em;
+padding: 0.3em 1em;
+background-color: #EEE;
+}
+p.analytic {
+	font-weight: bold;
+}
+
+td.result-ok {
+	background-color: #CFC;
+}
+td.result-wrong {
+	background-color: #FCC;
+}
+
