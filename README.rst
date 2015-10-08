@@ -86,3 +86,10 @@ BibTeX::
 	  Timestamp                = {2014.08.20}
 	}
 
+
+License
+------------------
+
+This work is open source software licensed under GPLv3 Affero (see LICENSE file). 
+If you are interested in a different license, please contact me. 
+
