@@ -21,7 +21,7 @@
  * 
  * Call \ref ultranest to run ultranest.
  * 
- * Download the code from the repository at https://github.com/JohannesBuchner/nested-sampling
+ * Download the code from the repository at https://github.com/JohannesBuchner/UltraNest/ (subfolder ultranest)
  * 
  * \author Johannes Buchner
  * \date 2014
