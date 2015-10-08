@@ -69,7 +69,7 @@ The source code repository is available at https://github.com/JohannesBuchner/Ul
 Citing this work
 -----------------
 
-The correct citation to use is Buchner (2014) published in Statistics and Computing. 
+The correct citation to use is Buchner (2014) published in Statistics and Computing (`Journal article <http://link.springer.com/article/10.1007/s11222-014-9512-y>`_, `Preprint PDF <http://arxiv.org/abs/1407.5459>`_). 
 
 BibTeX::
 
