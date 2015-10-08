@@ -121,6 +121,23 @@ BibTeX::
 	  Timestamp                = {2014.08.20}
 	}
 
+
+Download & Code repository
+------------------------------
+
+The code repository is at
+https://github.com/JohannesBuchner/UltraNest
+
+with subfolders 
+
+1) nested_sampling -- Modular framework for nested sampling algorithms and their development
+2) testsuite -- Test framework to evaluate the performance and accuracy of algorithms
+3) ultranest - A fast C implementation of a mixed RadFriends/MCMC nested sampling algorithm
+
+Installation of the nested_sampling works as usual with 
+
+	python setup.py install
+
 Documentation:
 -------------------------------
 
