@@ -1,3 +1,4 @@
+from __future__ import print_function
 import scipy, scipy.stats
 import numpy
 from numpy import exp, log, log10
@@ -11,7 +12,7 @@ warnings.simplefilter("ignore", DeprecationWarning)
 def svm_classify(points, classes, plot=False):
 	plot = plot and points.shape[1] == 2
 	if plot:
-		print 'svm_classify plotting --'
+		print('svm_classify plotting --')
 		#plt.figure(figsize=(5,5))
 		for c in sorted(set(classes)):
 			x = points[:,0][classes == c]
@@ -20,7 +21,7 @@ def svm_classify(points, classes, plot=False):
 			#print c, len(x), x[:10], y[:10]
 		plt.savefig('svm_classifier.pdf', bbox_inches='tight')
 		#plt.close()
-		print 'svm_classify plotting done.'
+		print('svm_classify plotting done.')
 	u = points.mean(axis=0)
 	s = points.std(axis=0)
 	def transform(p):
@@ -36,7 +37,7 @@ def svm_classify(points, classes, plot=False):
 		y = numpy.linspace(0, 1, 100)
 		grid = numpy.array([[[xi, yi] for xi in x] for yi in y])
 		dists = numpy.array([[clf.predict_proba(transform([[xi, yi]]))[0][0] for xi in x] for yi in y])
-		print 'levels:', dists.max(), dists.min()
+		print('levels:', dists.max(), dists.min())
 		plt.contour(x, y, dists, [0.99, 0.9, 0.1], colors=['red', 'red', 'red'], linestyles=['-', '--', ':'])
 		plt.savefig('svm_classifier_borders.pdf', bbox_inches='tight')
 		plt.close()
@@ -167,7 +168,7 @@ class SVMConstrainer(object):
 			if L >= Lmin:
 				# yay, we win
 				if ntoaccept > 5:
-					print '%d samples before accept' % ntoaccept, u, x, L
+					print('%d samples before accept' % ntoaccept, u, x, L)
 				return u, x, L, ntoaccept
 
 
@@ -226,25 +227,25 @@ if __name__ == '__main__':
 	from simplenested import NestedSampler, nested_integrator
 	constrainer = SVMConstrainer()
 	
-	print 'preparing sampler'
+	print('preparing sampler')
 	sampler = NestedSampler(nlive_points = 200, ndim=2,
 		priortransform=priortransform, loglikelihood=loglikelihood, 
 		draw_constrained = constrainer.draw_constrained)
 	constrainer.sampler = sampler
-	print 'running sampler'
+	print('running sampler')
 	result = nested_integrator(tolerance=0.01, sampler=sampler)
 
 	try:
 		x = numpy.array([x for _, x, _ in sampler.samples])
 		y = numpy.exp([l for _, _, l in sampler.samples])
-		print x
-		print y
+		print(x)
+		print(y)
 		plt.figure()
 		plt.hexbin(x[:,0], x[:,1], C=y, gridsize=40)
 		plt.savefig('svmtest_nested_samples.pdf', bbox_inches='tight')
 		plt.close()
 	except Exception as e:
-		print e
+		print(e)
 
 	try:
 		weights = numpy.array(result['weights']) # L, width
@@ -257,14 +258,14 @@ if __name__ == '__main__':
 		plt.savefig('svmtest_nested_integral.pdf', bbox_inches='tight')
 		plt.close()
 	except Exception as e:
-		print e
+		print(e)
 	
 	#u = numpy.linspace(0, 1, 10000)
 	#x = numpy.array([priortransform(ui) for ui in u])
 	#L = numpy.array([loglikelihood(xi) for xi in x])
 	#print 'monte carlo integration (%d samples) logZ:' % len(u), log(exp(L).mean())
 
-	print 'nested sampling (%d samples) logZ = ' % len(result['samples']), result['logZ'], result['logZerr']
+	print('nested sampling (%d samples) logZ = ' % len(result['samples']), result['logZ'], result['logZerr'])
 	
 
 

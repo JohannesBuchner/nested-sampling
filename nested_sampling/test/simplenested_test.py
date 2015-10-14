@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 Copyright: Johannes Buchner (C) 2013
 
@@ -40,12 +41,12 @@ if __name__ == '__main__':
 	
 	constrainer = Constrainer()
 	
-	print 'preparing sampler'
+	print('preparing sampler')
 	sampler = NestedSampler(nlive_points = 400, priortransform=priortransform, loglikelihood=loglikelihood, 
 		draw_constrained = constrainer.draw_constrained, ndim=2)
 	# tell constrainer about sampler so they can interact
 	constrainer.sampler = sampler
-	print 'running sampler'
+	print('running sampler')
 	result = nested_integrator(tolerance=0.2, sampler=sampler)
 
 	x = numpy.array([x for _, x, _ in sampler.samples])
@@ -64,17 +65,17 @@ if __name__ == '__main__':
 	plt.savefig('nested_integral.pdf', bbox_inches='tight')
 	plt.close()
 
-	print 'analytic logZ:', logZanalytic
+	print('analytic logZ:', logZanalytic)
 	u = numpy.linspace(0, 1, len(sampler.samples) - sampler.nlive_points)
 	x = priortransform(u)
 	L = loglikelihood(x)
-	print 'monte carlo integration (%d samples) logZ:' % len(u), log(exp(L).mean())
+	print('monte carlo integration (%d samples) logZ:' % len(u), log(exp(L).mean()))
 	u = numpy.linspace(0, 1, len(sampler.samples))
 	x = priortransform(u)
 	L = loglikelihood(x)
-	print 'monte carlo integration (%d samples) logZ:' % len(u), log(exp(L).mean())
+	print('monte carlo integration (%d samples) logZ:' % len(u), log(exp(L).mean()))
 
-	print 'nested sampling (%d samples) logZ = ' % len(result['samples']), result['logZ'], result['logZerr']
+	print('nested sampling (%d samples) logZ = ' % len(result['samples']), result['logZ'], result['logZerr'])
 
 
 

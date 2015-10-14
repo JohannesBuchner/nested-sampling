@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy
 import scipy.spatial
 
@@ -35,10 +36,10 @@ def update_maxdistance(u, ibootstrap, maxdistance, verbose = False):
 			
 			# choose smallest
 			nearest = numpy.argmin(increase)
-			if verbose: print ibootstrap, 'nearest:', u[i], u[nearest], increase[nearest]
+			if verbose: print(ibootstrap, 'nearest:', u[i], u[nearest], increase[nearest])
 			# update maxdistance
 			maxdistance = numpy.where(dists[nearest] > maxdistance, dists[nearest], maxdistance)
-			if verbose: print ibootstrap, 'extending:', maxdistance
+			if verbose: print(ibootstrap, 'extending:', maxdistance)
 		else:
 			# we got this one, everything is fine
 			pass
@@ -46,10 +47,10 @@ def update_maxdistance(u, ibootstrap, maxdistance, verbose = False):
 
 def find_maxdistance(u, verbose=False, nbootstraps=15):
 	# find nearest point for every point
-	if verbose: print 'finding nearest neighbors:'
+	if verbose: print('finding nearest neighbors:')
 	maxdistance = initial_maxdistance_guess(u)
 	#maxdistance = numpy.zeros(ndim)
-	if verbose: print 'initial:', maxdistance
+	if verbose: print('initial:', maxdistance)
 	for ibootstrap in range(nbootstraps):
 		maxdistance = update_maxdistance(u, ibootstrap, maxdistance, verbose=verbose)
 	return maxdistance
@@ -88,14 +89,14 @@ def update_rdistance(u, ibootstrap, rdistance, verbose = False, metric='euclidea
 	nearest_distance_to_members = distances.min(axis=0)
 	newrdistance = max(rdistance, nearest_distance_to_members.max())
 	if newrdistance > rdistance and verbose:
-		print ibootstrap, 'extending:', rdistance
+		print( ibootstrap, 'extending:', rdistance)
 	return newrdistance
 
 def find_rdistance(u, verbose=False, nbootstraps=15, metric='euclidean'):
 	# find nearest point for every point
-	if verbose: print 'finding nearest neighbors:'
+	if verbose: print('finding nearest neighbors:')
 	rdistance = 0 #initial_rdistance_guess(u)
-	if verbose: print 'initial:', rdistance
+	if verbose: print('initial:', rdistance)
 	for ibootstrap in range(nbootstraps):
 		rdistance = update_rdistance(u, ibootstrap, rdistance, verbose=verbose, metric=metric)
 	return rdistance

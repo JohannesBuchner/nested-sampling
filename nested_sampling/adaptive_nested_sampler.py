@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 Copyright: Johannes Buchner (C) 2013
 
@@ -86,13 +87,13 @@ class AdaptiveNestedSampler(object):
 		if r < 1e-3:
 			# there is a very flat curve
 			#   do not add a point (contract)
-			print 'Adaption: contracting'
+			print('Adaption: contracting')
 			pass
 		elif r > 1:
 			# currently have a steep curve and maximum not exceeded
 			#   then fill up (expand)
 			# this step can be parallelized
-			print 'Adaption: expanding'
+			print('Adaption: expanding')
 			while len(self.live_points) < self.nlive_points_max:
 				self.add_point(Lmin=Li)
 		else:

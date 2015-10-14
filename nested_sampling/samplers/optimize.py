@@ -1,3 +1,4 @@
+from __future__ import print_function
 import scipy, scipy.optimize
 import numpy
 from numpy import exp, log, log10
@@ -26,8 +27,8 @@ class OptimizeConstrainer(object):
 				return -loglikelihood(priortransform(ui))
 			ubest = self.optimizer(minfunc, ustart)
 			Lbest = loglikelihood(priortransform(ubest))
-			print 'old best:', ustart, Lstart
-			print 'new best:', ubest, Lbest
+			print('old best:', ustart, Lstart)
+			print('new best:', ubest, Lbest)
 			if self.sampler:
 				self.sampler.Lmax = max(self.sampler.Lmax, Lbest)
 		n = 0
