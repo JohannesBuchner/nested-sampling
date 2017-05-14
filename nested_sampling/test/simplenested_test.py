@@ -8,11 +8,14 @@ import numpy
 from numpy import exp, log, log10, pi
 import matplotlib.pyplot as plt
 
-from nested_integrator import nested_integrator
-from nested_sampler import NestedSampler
-from samplers.rejection import RejectionConstrainer as Constrainer
-#from samplers.affinemcmc import AffineMCMCConstrainer as Constrainer
-#from samplers.svm import SVMConstrainer as Constrainer
+from nested_sampling.nested_integrator import nested_integrator
+from nested_sampling.nested_sampler import NestedSampler
+from nested_sampling.samplers.rejection import RejectionConstrainer as Constrainer
+#from nested_sampling.samplers.affinemcmc import AffineMCMCConstrainer as Constrainer
+#from nested_sampling.samplers.svm import SVMConstrainer as Constrainer
+#from nested_sampling.samplers.ellipsoidal import EllipsoidConstrainer as Constrainer
+#from nested_sampling.samplers.ellipsoidal import MultiEllipsoidConstrainer as Constrainer
+from nested_sampling.samplers.friendsnext import FriendsConstrainer
 
 
 if __name__ == '__main__':
@@ -39,6 +42,7 @@ if __name__ == '__main__':
 	logZanalytic = 0
 	
 	constrainer = Constrainer()
+	constrainer = FriendsConstrainer(rebuild_every=50, radial=True, metric='euclidean', jackknife=False, force_shrink=False, verbose=False)
 	
 	print 'preparing sampler'
 	sampler = NestedSampler(nlive_points = 400, priortransform=priortransform, loglikelihood=loglikelihood, 
@@ -60,11 +64,14 @@ if __name__ == '__main__':
 	plt.plot(exp(widths), exp(L), 'x-', color='blue', ms=1)
 	plt.xlabel('prior mass')
 	plt.ylabel('likelihood')
+	plt.xscale('log')
+	plt.yscale('log')
 	#plt.xlim(0, 1)
 	plt.savefig('nested_integral.pdf', bbox_inches='tight')
 	plt.close()
 
 	print 'analytic logZ:', logZanalytic
+	"""
 	u = numpy.linspace(0, 1, len(sampler.samples) - sampler.nlive_points)
 	x = priortransform(u)
 	L = loglikelihood(x)
@@ -73,7 +80,7 @@ if __name__ == '__main__':
 	x = priortransform(u)
 	L = loglikelihood(x)
 	print 'monte carlo integration (%d samples) logZ:' % len(u), log(exp(L).mean())
-
+	"""
 	print 'nested sampling (%d samples) logZ = ' % len(result['samples']), result['logZ'], result['logZerr']
 
 

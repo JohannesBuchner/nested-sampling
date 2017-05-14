@@ -107,6 +107,24 @@ def create_problem_gauss_multimodal(**config):
 	return config
 
 
+def create_problem_vargauss(**config):
+	ndim = config.get('ndim', 10)
+	i = numpy.arange(ndim) + 3.0
+	mu = 0.54321
+	s = 6./((3.*i)**1.4)
+	def loglikelihood(x):
+		z = numpy.asarray(x)
+		return -0.5 * (((z - mu)/s)**2).sum()
+	
+	Z_analytic = 0.5 * log(2*pi * s**2).sum()
+	config['loglikelihood'] = loglikelihood
+	config['Z_analytic'] = Z_analytic
+	config['description'] = """Sequence of independent gaussians which become
+	narrower and narrower with the dimension number. Symmetric, %d dimensions.
+	""" % ndim
+	return config
+
+
 def create_problem_halfgauss(**config):
 	ndim = config.get('ndim', 2)
 	assert ndim >= 2

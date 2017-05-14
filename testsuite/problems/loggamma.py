@@ -84,6 +84,64 @@ def create_problem_loggamma_multimodal(**config):
 	return config
 
 
+
+def create_problem_eyes(**config):
+	ndim = config.get('ndim', 10)
+	hardness = config.get('hardness', 1)
+	assert ndim >= 4
+	r = 1
+	rerr = 0.1 / hardness
+	prod = 0.4
+	proderr = 0.5 / hardness**0.5
+	i = numpy.arange(1, ndim-3)
+	mu = (-2./i + 0.5)
+	s = 6./((3.*i)**1.4)
+	def loglikelihood(x):
+		params = numpy.asarray(x)
+		x = params[:4:2] * 4 - 2
+		y = params[1:4:2] * 4 - 2
+		z = params[4:]
+
+		partring = ((((x**2 + y**2)**0.5 - r)/rerr)**2).sum()
+		partx = (((y - prod)/proderr)**2).sum()
+		parthigh = (((z - mu)/s)**2).sum()
+		chi2 = partring + partx + parthigh
+
+		return -0.5 * chi2
+	
+	lo = scipy.stats.norm.cdf(0, mu, s)
+	hi = scipy.stats.norm.cdf(1, mu, s)
+	Z_high = log(hi - lo).sum() + 0.5 * log(2*pi * s**2).sum()
+	
+	#Z_analytic = {1:{5: -7.4, 10: -15.2, 20: -0}, 
+	#	5:{5: -13.3, 10: -21.4, 20: 0}}[hardness][ndim]
+	#Z_analytic = {1:-7.35-2.3431, 5:-13.3-2.3431}[hardness]
+	#Z_analytic = {1:-3.072, 2: -4.078, 3:-4.697, 4:-5.1467, 5:-5.4978}[hardness] * 2 + Z_high
+	#Z_analytic = 0 + Z_high
+	Z_analytic = 2*(log(proderr) + log(rerr)) + Z_high
+	config['loglikelihood'] = loglikelihood
+	config['Z_analytic'] = Z_analytic
+	config['description'] = """Similar to Loggamma_multimodal problem.
+	In %d dimensions. Multi-modal (4), peculiar contours (banana to ring-like).
+	
+	Analytic value verified by fine integration.
+	""" % ndim
+
+	"""
+	# For calibrating mu, s with i
+	for i in range(1,10):
+		mu = (-2./i + 0.5)
+		x = numpy.linspace(0, 1, 400)
+		s = 6./((3.*i)**1.4)
+		print mu, s
+		#y = ((mu - x)/s)**2
+		y = scipy.stats.norm.pdf(x, mu, s)
+		plt.plot(x, y)
+	plt.show()
+	"""
+	return config
+
+
 def create_problem_funnel(**config):
 	ndim = config.get('ndim', 2)
 	assert ndim >= 2

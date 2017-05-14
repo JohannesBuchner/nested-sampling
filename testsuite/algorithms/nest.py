@@ -9,11 +9,14 @@ from numpy import log, exp
 from nested_sampling.nested_integrator import nested_integrator
 from nested_sampling.nested_sampler import NestedSampler
 from nested_sampling.samplers.rejection import RejectionConstrainer
+#from nested_sampling.samplers.friendsnext import FriendsConstrainer as FriendsConstrainer2
 from nested_sampling.samplers.friends import FriendsConstrainer
+FriendsConstrainer2 = FriendsConstrainer
 from nested_sampling.samplers.optimize import OptimizeConstrainer
 from nested_sampling.samplers.mcmc import MCMCConstrainer, GaussProposal, MultiScaleProposal
 #from nested_sampling.samplers.galilean import GalileanConstrainer
 from nested_sampling.samplers.svm.svmnest import SVMConstrainer
+from nested_sampling.samplers.ellipsoidal import EllipsoidConstrainer, MultiEllipsoidConstrainer
 import matplotlib.pyplot as plt
 from nested_sampling.postprocess import equal_weighted_posterior, marginal_plots
 import time
@@ -35,12 +38,20 @@ def run_nested(**config):
 		constrainer = RejectionConstrainer()
 	elif method.startswith('maxfriends'): # maximum distance
 		constrainer = FriendsConstrainer(rebuild_every=nlive_points, radial=False, force_shrink=config['force_shrink'], verbose=False)
+	elif method.startswith('radfriends2'): # radial distance
+		constrainer = FriendsConstrainer2(rebuild_every=nlive_points, radial=True, metric = 'euclidean', jackknife=config['jackknife'], force_shrink=config['force_shrink'], verbose=False)
+	elif method.startswith('supfriends2'): # supreme distance
+		constrainer = FriendsConstrainer2(rebuild_every=nlive_points, radial=True, metric = 'chebyshev', jackknife=config['jackknife'], force_shrink=config['force_shrink'], verbose=False)
 	elif method.startswith('radfriends'): # radial distance
 		constrainer = FriendsConstrainer(rebuild_every=nlive_points, radial=True, metric = 'euclidean', jackknife=config['jackknife'], force_shrink=config['force_shrink'], verbose=False)
 	elif method.startswith('supfriends'): # supreme distance
-		constrainer = FriendsConstrainer(rebuild_every=nlive_points, radial=True, metric = 'chebyshev', jackknife=config['jackknife'], force_shrink=config['force_shrink'], verbose=False)
+		constrainer = FriendsConstrainer(rebuild_every=nlive_points, radial=True, metric = 'chebyshev', jackknife=config['jackknife'], force_shrink=config['force_shrink'], verbose=True)
 	elif method.startswith('optimize'):
 		constrainer = OptimizeConstrainer()
+	elif method.startswith('ellipsoid'):
+		constrainer = EllipsoidConstrainer()
+	elif method.startswith('multiellipsoid'):
+		constrainer = MultiEllipsoidConstrainer()
 	elif method.startswith('galilean'):
 		velocity_scale = config['velocity_scale']
 		constrainer = GalileanConstrainer(nlive_points = nlive_points, ndim = ndim, velocity_scale = velocity_scale)
@@ -117,6 +128,8 @@ configs = [
 		#dict(draw_method='maxfriends'),
 		dict(draw_method='radfriends', jackknife=False, force_shrink=False),
 		dict(draw_method='supfriends', jackknife=False, force_shrink=False),
+		dict(draw_method='radfriends2', jackknife=False, force_shrink=False),
+		dict(draw_method='supfriends2', jackknife=False, force_shrink=False),
 		dict(draw_method='radfriends-1', jackknife=True, force_shrink=True),
 		#dict(draw_method='mcmc-gauss-scale0.1', proposer = 'gauss', adapt=False, scale=0.1),
 		#dict(draw_method='mcmc-gauss-scale0.1-adapt', proposer = 'gauss', adapt=True, scale=0.1),
@@ -127,6 +140,8 @@ configs = [
 		#dict(draw_method='galilean-velocity3', velocity_scale = 0.001),
 		#dict(draw_method='galilean-velocity0', velocity_scale = 0.3),
 		#dict(draw_method='hiercluster-svm', constrainer=SVMConstrainer()),
+		dict(draw_method='ellipsoidal'),
+		dict(draw_method='multiellipsoidal'),
 	], [
 		dict(integrator='normal'), 
 	]

@@ -54,8 +54,38 @@ def find_maxdistance(u, verbose=False, nbootstraps=15):
 		maxdistance = update_maxdistance(u, ibootstrap, maxdistance, verbose=verbose)
 	return maxdistance
 
+most_distant_nearest_neighbor = None
+try:
+	import os
+	from ctypes import *
+	from numpy.ctypeslib import ndpointer
+
+	if int(os.environ.get('OMP_NUM_THREADS', '1')) > 1:
+		libname = 'cneighbors-parallel.so'
+	else:
+		libname = 'cneighbors.so'
+	libfilename = os.path.join(os.path.dirname(os.path.abspath(__file__)), libname)
+	lib = cdll.LoadLibrary(libfilename)
+	lib.most_distant_nearest_neighbor.argtypes = [
+		ndpointer(dtype=numpy.float64, ndim=2, flags='C_CONTIGUOUS'), 
+		c_int, 
+		c_int, 
+		]
+	lib.most_distant_nearest_neighbor.restype = c_double
+
+	def most_distant_nearest_neighbor(xx):
+		i, m = xx.shape
+		r = lib.most_distant_nearest_neighbor(xx, i, m)
+		return r
+except ImportError as e:
+	print 'Using slow, high-memory neighborhood function nearest_rdistance_guess because import failed:', e
+except Exception as e:
+	print 'Using slow, high-memory neighborhood function nearest_rdistance_guess because:', e
+
 
 def nearest_rdistance_guess(u, metric='euclidean'):
+	if metric == 'euclidean' and most_distant_nearest_neighbor is not None:
+		return most_distant_nearest_neighbor(u)
 	n = len(u)
 	distances = scipy.spatial.distance.cdist(u, u, metric=metric)
 	numpy.fill_diagonal(distances, 1e300)
@@ -63,14 +93,18 @@ def nearest_rdistance_guess(u, metric='euclidean'):
 	rdistance = numpy.max(nearest_neighbor_distance)
 	#print 'distance to nearest:', rdistance, nearest_neighbor_distance
 	return rdistance
+
 def initial_rdistance_guess(u, metric='euclidean', k = 10):
 	n = len(u)
 	distances = scipy.spatial.distance.cdist(u, u, metric=metric)
-	#if k == 1:
+	if k == 1:
 	#	numpy.diag(distances)
 	#	nearest = [distances[i,:])[1:k] for i in range(n)]
-	#else:
-	nearest = [numpy.sort(distances[i,:])[1:k+1] for i in range(n)]
+		distances2 = distances + numpy.diag(1e100 * numpy.ones(len(distances)))
+		nearest = distances2.min(axis=0)
+	else:
+		assert False, k
+		nearest = [numpy.sort(distances[i,:])[1:k+1] for i in range(n)]
 	# compute distance maximum
 	rdistance = numpy.max(nearest)
 	return rdistance

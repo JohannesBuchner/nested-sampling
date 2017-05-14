@@ -72,7 +72,10 @@ class NestedSampler(object):
 			startu = live_pointsu[k], 
 			startx = live_pointsx[k], 
 			startL = live_pointsL[k],
-			starti = i)
+			starti = i,
+			live_pointsu = live_pointsu,
+			live_pointsx = live_pointsx,
+			live_pointsL = live_pointsL,)
 		
 		live_pointsu[i] = uj
 		live_pointsx[i] = xj

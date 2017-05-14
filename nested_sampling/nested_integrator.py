@@ -46,7 +46,7 @@ def integrate_remainder(sampler, logwidth, logVolremaining, logZ):
 	# logwidth remains the same now for each sample
 	remainder = list(sampler.remainder())
 	logV = logwidth
-	L0 = remainder[0][2]
+	L0 = remainder[-1][2]
 	Ls = numpy.exp([Li - L0 for ui, xi, Li in remainder])
 	"""
 		      x---   4

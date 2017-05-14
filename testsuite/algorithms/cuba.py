@@ -55,7 +55,8 @@ def run_cuba(**config):
 	if config['cuba_algorithm'] == 'Vegas':
 		results = pycuba.Vegas(Integrand, NDIM, verbose=2, **commonargs)
 	elif config['cuba_algorithm'] == 'Suave':
-		results = pycuba.Suave(Integrand, NDIM, NNEW, FLATNESS, verbose=2 | 4, **commonargs)
+		print Integrand, NDIM, NNEW, FLATNESS, 2 | 4, commonargs
+		results = pycuba.Suave(Integrand, NDIM, nnew=NNEW, flatness=FLATNESS, verbose=2 | 4, **commonargs)
 	elif config['cuba_algorithm'] == 'Divonne':
 		results = pycuba.Divonne(Integrand, NDIM,
 			key1=KEY1, key2=KEY2, key3=KEY3, maxpass=MAXPASS,

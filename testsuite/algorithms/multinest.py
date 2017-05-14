@@ -74,7 +74,7 @@ def run_multinest(**config):
 		plt.savefig('%smarg.png' % output_basename, bbox_inches='tight')
 		plt.close()
 	
-	if not keep_results:
+	if config['seed'] != 0 and not keep_results:
 		# destroy the evidence (to save disk space)
 		for f in glob.iglob(mn_args['outputfiles_basename'] + "*"):
 			print 'deleting %s' % f

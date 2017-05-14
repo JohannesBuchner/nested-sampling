@@ -19,9 +19,9 @@ class AlgorithmResult(object):
 		res = self.results
 		return (res['fail'] or numpy.isnan(res['accuracy']),
 			(not (res.get('predictedaccuracy', 1e300) > TARGET_ACCURACY)) and \
-			  (not (res['accuracy'] < TARGET_ACCURACY*1.1)) \
+			  (not (res['accuracy'] < TARGET_ACCURACY*1.1*2)) \
 			    if 'accuracy' in res and 'predictedaccuracy' in res else 1e300, 
-			res.get('accuracy', 1e300) if (res.get('accuracy', 1e300) > TARGET_ACCURACY) else 0,
+			res.get('accuracy', 1e300) if (res.get('accuracy', 1e300) > TARGET_ACCURACY*2) else 0,
 			int(res.get('neval', 1e300)))
 	def __cmp__(self, other):
 		for i, (a, b) in enumerate(zip(self.sortkey(), other.sortkey())):
@@ -102,14 +102,18 @@ def mkdir(p):
 		pass
 	assert os.path.exists(p)
 
-def create_counting_nonnan(function):
+def create_counting_nonnan(function, problem_name='(unknown)'):
 	def counting_function(*args, **kwargs):
 		counting_function.calls += 1
+		if numpy.isnan(args).any(): 
+			print 'WARNING: in problem %s, function %s' % (problem_name, function)
+			print 'WARNING: algorithm suggested NaN parameters', args
+			return -1e300
 		l = float(function(*args, **kwargs))
 		if numpy.isnan(l) or numpy.isinf(l):
 			import sys
-			print 'FATAL ERROR: in problem %s, function %s' % (p, original_loglikelihood)
-			print 'FATAL ERROR: invalid likelihood return value at', x, l
+			print 'FATAL ERROR: in problem %s, function %s' % (problem_name, function)
+			print 'FATAL ERROR: invalid likelihood return value at', args, l
 			sys.exit(-1)
 		return l
 	counting_function.calls = 0
@@ -141,7 +145,7 @@ def run(r, a, seed):
 	#		print 'FATAL ERROR: invalid likelihood return value at', x, l
 	#		sys.exit(-1)
 	#	return l
-	config['loglikelihood'] = create_counting_nonnan(original_loglikelihood)
+	config['loglikelihood'] = create_counting_nonnan(original_loglikelihood, problem_name=p)
 	
 	# check if not there already
 	resultfile = p + 'results.json'
@@ -173,14 +177,15 @@ def run_algorithm(p, a):
 		# deterministic algorithm, only need to run once
 		results = [run(p, a, 0)]*10
 	else:
-		if os.environ.get('PARALLEL', '0') == '0':
+		nprocs = int(os.environ.get('PARALLEL', '0'))
+		if nprocs == 0 or nprocs == 1:
 			results = [run(p, a, seed) for seed in range(10)]
 		else:
 			global current_problem
 			global current_algorithm
 			current_problem = p
 			current_algorithm = a
-			results = Parallel(5)(delayed(run_current)(i) for i in range(10))
+			results = Parallel(nprocs)(delayed(run_current)(i) for i in range(10))
 	
 	neval = numpy.mean([result['neval'] for result in results])
 	fail = any([result.get('failed', False) for result in results])
@@ -191,7 +196,9 @@ def run_algorithm(p, a):
 	)
 	try:
 		value = numpy.mean([result['Z_computed'] for result in results])
-		accuracy = numpy.mean([(result['Z_computed'] - p['Z_analytic'])**2 for result in results])**0.5
+		#accuracy = numpy.mean([(result['Z_computed'] - p['Z_analytic'])**2 for result in results])**0.5
+		#accuracy = numpy.mean([numpy.abs(result['Z_computed'] - p['Z_analytic']) for result in results])
+		accuracy = numpy.median([numpy.abs(result['Z_computed'] - p['Z_analytic']) for result in results])
 		predictedaccuracy = numpy.mean([result['Z_computed_err'] for result in results])
 		summary.update(dict(
 			value=value,
@@ -247,7 +254,7 @@ def show_results(results):
 <tr><th>Algorithm</th>
 <th>Rank</th>
 <th>Z Result</th>
-<th>Accuracy</th>
+<th>Actual scatter</th>
 <th>Claimed accuracy</th>
 <th>evaluations</th>
 </thead>
@@ -294,8 +301,8 @@ def show_results(results):
 				""" % results['neval'])
 				latexout.write(r"(failure) & (failure) & (failure) & %d " % results['neval'])
 			else:
-				result_class = 'ok' if abs(results['value'] - problem['Z_analytic']) < TARGET_ACCURACY else 'wrong'
-				accuracy_class = 'ok' if abs(results['accuracy']) < TARGET_ACCURACY else 'wrong'
+				result_class = 'ok' if abs(results['value'] - problem['Z_analytic']) < 2 * TARGET_ACCURACY else 'wrong'
+				accuracy_class = 'ok' if abs(results['accuracy']) < 2 * TARGET_ACCURACY else 'wrong'
 				claim_class = 'ok' if results['accuracy'] < 2 * results['predictedaccuracy'] else 'wrong'
 				fmt = dict(result_class=result_class, accuracy_class=accuracy_class, claim_class=claim_class)
 				fmt.update(results)
@@ -305,7 +312,7 @@ def show_results(results):
 					<td class="result-%(claim_class)s">%(predictedaccuracy).4f</td>
 					<td>%(neval)d</td>
 				""" % fmt)
-				latexout.write(r"%(value).4f & %(accuracy).4f & %(predictedaccuracy).4f & %(neval)d " % fmt)
+				latexout.write(r"%(value).2f & %(accuracy).2f & %(predictedaccuracy).2f & %(neval)d " % fmt)
 			fout.write("""</tr>\n""")
 			latexout.write("\\\\\n")
 

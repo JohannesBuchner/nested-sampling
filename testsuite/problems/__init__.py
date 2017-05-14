@@ -3,11 +3,15 @@ Problems known to man
 """
 import gauss
 import loggamma
+import real.timeseries
 
 problems = [
-	gauss.create_problem_gauss(ndim=1, problem_name='gauss1d'),
+	#gauss.create_problem_gauss(ndim=1, problem_name='gauss1d'),
 	gauss.create_problem_gauss(ndim=3, problem_name='gauss3d'),
 	gauss.create_problem_gauss(ndim=10, problem_name='gauss10d'),
+	gauss.create_problem_vargauss(ndim=10, problem_name='vargauss10d'),
+	gauss.create_problem_vargauss(ndim=20, problem_name='vargauss20d'),
+	#gauss.create_problem_gauss(ndim=50, problem_name='vargauss50d'),
 	gauss.create_problem_shell(ndim=2, problem_name='shell2d'),
 	#gauss.create_problem_shell(ndim=2, problem_name='shell2dtilt10', tilt=10),
 	gauss.create_problem_shell(ndim=10, problem_name='shell10d'),
@@ -28,6 +32,14 @@ problems = [
 	loggamma.create_problem_loggamma_multimodal(ndim=2, problem_name='loggamma_multimodal2d'),
 	loggamma.create_problem_loggamma_multimodal(ndim=5, problem_name='loggamma_multimodal5d'),
 	loggamma.create_problem_loggamma_multimodal(ndim=10, problem_name='loggamma_multimodal10d'),
+	loggamma.create_problem_eyes(ndim=5, hardness=1, problem_name='eyes5d'),
+	loggamma.create_problem_eyes(ndim=10, hardness=1, problem_name='eyes10d'),
+	loggamma.create_problem_eyes(ndim=5, hardness=5, problem_name='eyes5d-5'),
+	loggamma.create_problem_eyes(ndim=10, hardness=5, problem_name='eyes10d-5'),
+	real.timeseries.create_problem_RVexoplanet(nplanets=0, problem_name='RVexoplanet-0'),
+	real.timeseries.create_problem_RVexoplanet(nplanets=1, problem_name='RVexoplanet-1'),
+	#loggamma.create_problem_eyes(ndim=20, hardness=5, problem_name='eyes20d-5'),
+	real.timeseries.create_problem_RVexoplanet(nplanets=2, problem_name='RVexoplanet-2'),
 ]
 
 

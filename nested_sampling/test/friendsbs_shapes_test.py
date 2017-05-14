@@ -84,8 +84,11 @@ for iresample in range(nresample):
 		u = data
 		
 		#maxdistance = find_maxdistance(u, verbose=True, nbootstraps=15)
-		maxdistance = find_rdistance(u, verbose=True, nbootstraps=50, metric='chebyshev')
-		rdistance = find_rdistance(u, verbose=True, nbootstraps=50, metric='euclidean')
+		
+		maxdistance = find_rdistance(distances = scipy.spatial.distance.cdist(u, u, metric='chebyshev'), 
+			verbose=True, nbootstraps=50)
+		rdistance = find_rdistance(distances = scipy.spatial.distance.cdist(u, u, metric='euclidean'), 
+			verbose=True, nbootstraps=50)
 
 		if speedTest:
 			continue
