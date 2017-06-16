@@ -97,7 +97,7 @@ def jarvis_patrick_clustering(dists, number_of_neighbors, threshold_number_of_co
 	#print 'jarvis_patrick_clustering'
 	# initially each element is a cluster of 1 element
 	n = len(dists)
-	cluster = {i:i for i in range(n)}
+	cluster = dict([(i,i) for i in range(n)])
 	# each row of dists, sort
 	neighbors_list = numpy.argsort(dists, axis=1)[:,1:number_of_neighbors+1]
 	#print 'neighbors_list:', neighbors_list.shape

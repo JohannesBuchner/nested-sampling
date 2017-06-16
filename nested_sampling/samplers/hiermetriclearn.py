@@ -87,7 +87,7 @@ class RadFriendsRegion(object):
 		dists = scipy.spatial.distance.cdist(self.members, self.members, metric=self.metric)
 		connected = dists < self.maxdistance
 		nmembers = len(self.members)
-		cluster = {i:i for i in range(nmembers)}
+		cluster = dict([(i,i) for i in range(nmembers)])
 		for i in range(nmembers):
 			neighbors = numpy.where(connected[i,:])[0] #[i+1:]
 			for j in neighbors:
