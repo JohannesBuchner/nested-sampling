@@ -95,7 +95,7 @@ sampler = NestedSampler(nlive_points = 400,
 	priortransform=priortransform, loglikelihood=loglikelihood, 
 	draw_constrained = constrainer.draw_constrained, ndim=2)
 constrainer.sampler = sampler
-results = nested_integrator(tolerance=0.1, sampler=sampler)
+results = nested_integrator(tolerance=0.5, sampler=sampler)
 
 # add contours?
 
