@@ -37,7 +37,8 @@ class FriendsConstrainer(object):
 	"""
 	def __init__(self, rebuild_every = 50, radial = True, metric = 'euclidean', jackknife = False,
 			force_shrink = False,
-			hinter = None, verbose = False):
+			hinter = None, verbose = False, 
+			keep_phantom_points=False, optimize_phantom_points=False):
 		self.maxima = []
 		self.iter = 0
 		self.region = None
@@ -46,9 +47,15 @@ class FriendsConstrainer(object):
 		self.metric = metric
 		self.file = None
 		self.jackknife = jackknife
-		self.force_shrink = False
+		self.force_shrink = force_shrink
 		self.hinter = hinter
 		self.verbose = verbose
+		if keep_phantom_points:
+			assert self.force_shrink, 'keep_phantom_points needs force_shrink=True'
+		self.keep_phantom_points = keep_phantom_points
+		self.optimize_phantom_points = optimize_phantom_points
+		self.phantom_points = []
+		self.phantom_points_Ls = []
 	
 	def cluster(self, u, ndim, keepRadius=False):
 		"""
@@ -69,6 +76,10 @@ class FriendsConstrainer(object):
 					maxdistance = find_maxdistance(u)
 			if self.force_shrink and self.region is not None and 'maxdistance' in self.region:
 				maxdistance = min(maxdistance, self.region['maxdistance'])
+			if self.keep_phantom_points and len(self.phantom_points) > 0:
+				# add phantoms to u now
+				print 'including phantom points in cluster members', self.phantom_points
+				u = numpy.vstack((u, self.phantom_points))
 			ulow  = numpy.max([u.min(axis=0) - maxdistance, numpy.zeros(ndim)], axis=0)
 			uhigh = numpy.min([u.max(axis=0) + maxdistance, numpy.ones(ndim)], axis=0)
 		else:
@@ -140,6 +151,7 @@ class FriendsConstrainer(object):
 		# is it true for at least one?
 		closeby = dist_criterion.any(axis=0)
 		return closeby
+	
 	def generate(self, ndim):
 		it = True
 		verbose = False and self.verbose
@@ -165,7 +177,7 @@ class FriendsConstrainer(object):
 				# do a prefiltering rejection sampling first
 				us = numpy.random.uniform(self.region['ulow'], self.region['uhigh'], size=(100, ndim))
 				ntotal += 100
-				mask = self.are_inside_cluster(us, ndim)
+				mask = self.are_inside_cluster(self.transform_points(us), ndim)
 				if not mask.any():
 					continue
 				us = us[mask]
@@ -225,14 +237,15 @@ class FriendsConstrainer(object):
 		# rank them based on ??
 		pass
 	
-	def rebuild(self, previous, ndim, Lmin, keepRadius=False):
-		previousL = numpy.array([L for _, _, L in previous])
-		previousu = numpy.array([u for u, _, _ in previous])
-		assert previousu.shape[1] == ndim, previousu.shape
-		high = previousL > Lmin
-		u = previousu[high]
-		L = previousL[high]
-		self.cluster(u=u, ndim=ndim, keepRadius=keepRadius)
+	def transform_new_points(self, us):
+		return us
+	def transform_points(self, us):
+		return us
+	def transform_point(self, u):
+		return u
+	
+	def rebuild(self, u, ndim, keepRadius=False):
+		self.cluster(u=self.transform_new_points(u), ndim=ndim, keepRadius=keepRadius)
 		# reset generator
 		self.generator = self.generate(ndim=ndim)
 	def debug(self, ndim):
@@ -266,18 +279,74 @@ class FriendsConstrainer(object):
 		plt.close()
 		print 'creating plot... done'
 	
-	def draw_constrained(self, Lmin, priortransform, loglikelihood, previous, ndim, **kwargs):
-		# previous is [[u, x, L], ...]
+	def is_last_of_its_cluster(self, u, uothers):
+		# check if ucurrent is within the current maxdistance from uouthers other than itself
+		maxdistance = self.region['maxdistance']
+		if self.radial:
+			dists = scipy.spatial.distance.cdist(uothers, [u], metric=self.metric)
+			dist_criterion = dists < maxdistance
+		else:
+			dists = numpy.abs(u - uothers)
+			# nearer than maxdistance in all dimensions
+			dist_criterion = numpy.all(dists < maxdistance, axis=1)
+		return not numpy.any(dist_criterion)
+
+	def _draw_constrained_prepare(self, Lmin, priortransform, loglikelihood, live_pointsu, ndim, **kwargs):
 		self.iter += 1
 		rebuild = self.iter % self.rebuild_every == 1
 		if rebuild or self.region is None:
-			self.rebuild(previous, ndim, Lmin, keepRadius=False)
+			self.rebuild(numpy.asarray(live_pointsu), ndim, keepRadius=False)
 		if self.generator is None:
 			self.generator = self.generate(ndim=ndim)
-			#self.debug_plot(Lmin, priortransform, loglikelihood, previous, ndim)
-		#self.debug(ndim)
+			#self.debug_plot(Lmin, priortransform, loglikelihood, live_pointsu, ndim)
 		ntoaccept = 0
 		ntotalsum = 0
+		if self.keep_phantom_points:
+			# check if the currently dying point is the last of a cluster
+			starti = kwargs['starti']
+			ucurrent = live_pointsu[starti]
+			uothers = [ui for i, ui in enumerate(live_pointsu) if i != starti]
+			if self.is_last_of_its_cluster(self.transform_point(ucurrent), self.transform_points(uothers)):
+				if self.optimize_phantom_points:
+					print 'optimizing phantom point', ucurrent
+					import scipy.optimize
+					def f(u):
+						if not self.is_inside(self.transform_point(u)):
+							return 1e100
+						x = priortransform(u)
+						L = loglikelihood(x)
+						if self.verbose: print 'OPT %.2f ' % L, u
+						return -L
+					r = scipy.optimize.fmin(f, ucurrent, ftol=0.5, full_output=True)
+					ubest = r[0]
+					Lbest = -r[1]
+					ntoaccept += r[3]
+					print 'optimization gave', r
+					if not self.is_last_of_its_cluster(self.transform_point(ubest), self.transform_points(uothers)):
+						print 'that optimum is inside the other points, so no need to store'
+					else:
+						self.phantom_points.append(ubest)
+						self.phantom_points_Ls.append(Lbest)
+				else:
+					print 'remembering phantom point', ucurrent
+					self.phantom_points.append(ucurrent)
+			
+			if self.optimize_phantom_points and len(self.phantom_points) > 0:
+				# purge phantom points that are below Lmin
+				keep = [i for i, Lp in enumerate(self.phantom_points_Ls) if Lp > Lmin]
+				self.phantom_points = [self.phantom_points[i] for i in keep]
+				if len(keep) != len(self.phantom_points_Ls):
+					print 'purging some old phantom points. new:', self.phantom_points
+				self.phantom_points_Ls = [self.phantom_points_Ls[i] for i in keep]
+		return ntoaccept, ntotalsum, rebuild
+
+	def get_Lmax(self):
+		if len(self.phantom_points_Ls) == 0:
+			return None
+		return max(self.phantom_points_Ls)
+
+	def draw_constrained(self, Lmin, priortransform, loglikelihood, live_pointsu, ndim, **kwargs):
+		ntoaccept, ntotalsum, rebuild = self._draw_constrained_prepare(Lmin, priortransform, loglikelihood, live_pointsu, ndim, **kwargs)
 		while True:
 			for u, ntotal in self.generator:
 				assert (u >= 0).all() and (u <= 1).all(), u
@@ -297,7 +366,7 @@ class FriendsConstrainer(object):
 				
 					for i, lo, hi in hints:
 						u[i] = numpy.random.uniform(lo, hi)
-					if not is_inside(u):
+					if not is_inside(self.transform_point(u)):
 						# not sure if this is a good idea
 						# it means we dont completely trust
 						# the hinting function
@@ -321,8 +390,53 @@ class FriendsConstrainer(object):
 					#self.debugplot(u)
 					break
 			rebuild = True
-			self.rebuild(previous, ndim, Lmin, keepRadius=False)
+			self.rebuild(numpy.asarray(live_pointsu), ndim, keepRadius=False)
 
+class FriendsBoxConstrainer(FriendsConstrainer):
+	"""
+	Like FriendsConstrainer, but reprojects all live points into a unit box first, 
+	to work around drastically different scales.
+	"""
+	def transform_points(self, points):
+		return (points - self.box_scale_lo) / (self.box_scale_hi - self.box_scale_lo) * 0.2 + 0.4
+	def transform_point(self, point):
+		return (point  - self.box_scale_lo) / (self.box_scale_hi - self.box_scale_lo) * 0.2 + 0.4
+	def transform_new_points(self, points):
+		npoints, ndim = numpy.shape(points)
+		self.box_scale_lo = numpy.min(points, axis=0)
+		self.box_scale_hi = numpy.max(points, axis=0)
+		assert len(self.box_scale_lo) < 100
+		assert self.box_scale_lo.shape == (ndim,)
+		return self.transform_points(points)
+
+class FriendsMahalanobisConstrainer(FriendsConstrainer):
+	"""
+	Like FriendsConstrainer, but reprojects all live points into a unit box first, 
+	to work around drastically different scales and orientations.
+	"""
+	def transform_points(self, points):
+		# we have the mean and covariance.
+		X = numpy.matrix(points - self.mean)
+		X_white = np.dot(X, self.whitening_matrix)
+		return (X_white - self.box_scale_lo) / (self.box_scale_hi - self.box_scale_lo) * 0.2 + 0.4
+	def transform_point(self, point):
+		X = point - self.mean
+		X_white = np.dot(X, self.whitening_matrix)
+		return (X_white - self.box_scale_lo) / (self.box_scale_hi - self.box_scale_lo) * 0.2 + 0.4
+	def transform_new_points(self, points):
+		npoints, ndim = numpy.shape(points)
+		self.mean = numpy.mean(points, axis=0)
+		X = numpy.matrix(points - self.mean)
+		self.cov = np.dot(X.T, X)
+		# eigen values/vectors of cov
+		d, E = np.linalg.eigh(cov)
+		# whitening matrix
+		self.whitening_matrix = np.dot(np.dot(E, D), E.T)
+		X_white = np.dot(X, self.whitening_matrix)
+		self.box_scale_lo = numpy.min(X_white, axis=0)
+		self.box_scale_hi = numpy.max(X_white, axis=0)
+		return X_white
+	
 if __name__ == '__main__':
 	friends = FriendsConstrainer(radial = True)
 	

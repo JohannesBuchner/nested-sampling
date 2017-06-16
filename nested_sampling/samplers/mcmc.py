@@ -108,17 +108,19 @@ class MCMCConstrainer(object):
 	Markov chain Monte Carlo proposals using the Metropolis update: 
 	Do a number of steps, while adhering to boundary.
 	"""
-	def __init__(self, nsteps = 200, proposer = MultiScaleProposal(), nmaxsteps = 10000):
+	def __init__(self, nsteps = 200, proposer = MultiScaleProposal(), nmaxsteps = 10000, nminaccepts=0):
 		self.proposer = proposer
 		self.sampler = None
 		self.nsteps = nsteps
 		self.nmaxsteps = nmaxsteps
+		self.nminaccepts = nminaccepts
 	
 	def draw_constrained(self, Lmin, priortransform, loglikelihood, ndim, 
 			startu, startx, startL, **kwargs):
 		ui = startu
 		xi = startx
 		Li = startL
+		naccepts = 0
 		assert Li >= Lmin
 		self.proposer.new_chain()
 		n = 0
@@ -136,11 +138,12 @@ class MCMCConstrainer(object):
 			accept = L >= Lmin
 			if accept:
 				ui, xi, Li = u, x, L
+				naccepts += 1
 			
 			# tell proposer so it can scale
 			self.proposer.accept(accept)
 			
-			if i + 1 >= self.nsteps:
+			if i + 1 >= self.nsteps and naccepts >= self.nminaccepts:
 				if Li > Lmin:
 					break
 		
