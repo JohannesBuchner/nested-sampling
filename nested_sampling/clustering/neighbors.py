@@ -54,6 +54,18 @@ def find_maxdistance(u, verbose=False, nbootstraps=15):
 		maxdistance = update_maxdistance(u, ibootstrap, maxdistance, verbose=verbose)
 	return maxdistance
 
+def is_within_distance_of(members, maxdistance, u, metric='euclidean'):
+	dists = scipy.spatial.distance.cdist(members, us, metric=metric)
+	return (dists < maxdistance).any()
+
+def count_within_distance_of(members, maxdistance, us, metric='euclidean'):
+	dists = scipy.spatial.distance.cdist(members, us, metric=metric)
+	return (dists < maxdistance).sum(axis=0)
+
+def any_within_distance_of(members, maxdistance, us, metric='euclidean'):
+	dists = scipy.spatial.distance.cdist(members, us, metric=metric)
+	return (dists < maxdistance).any(axis=0)
+
 most_distant_nearest_neighbor = None
 try:
 	import os
@@ -77,6 +89,56 @@ try:
 		i, m = xx.shape
 		r = lib.most_distant_nearest_neighbor(xx, i, m)
 		return r
+
+	lib.is_within_distance_of.argtypes = [
+		ndpointer(dtype=numpy.float64, ndim=2, flags='C_CONTIGUOUS'), 
+		c_int, 
+		c_int, 
+		c_double, 
+		ndpointer(dtype=numpy.float64, ndim=1, flags='C_CONTIGUOUS'), 
+		]
+	lib.is_within_distance_of.restype = c_int
+
+	def is_within_distance_of(xx, maxdistance, y):
+		i, m = xx.shape
+		r = lib.is_within_distance_of(xx, i, m, maxdistance, y)
+		return r == 1
+
+	lib.count_within_distance_of.argtypes = [
+		ndpointer(dtype=numpy.float64, ndim=2, flags='C_CONTIGUOUS'), 
+		c_int, 
+		c_int, 
+		c_double, 
+		ndpointer(dtype=numpy.float64, ndim=2, flags='C_CONTIGUOUS'), 
+		c_int, 
+		ndpointer(dtype=numpy.float64, ndim=1, flags='C_CONTIGUOUS'), 
+		c_int, 
+		]
+
+	def count_within_distance_of(xx, maxdistance, yy):
+		i, m = xx.shape
+		j = len(yy)
+		counts = numpy.zeros(len(yy))
+		r = lib.count_within_distance_of(xx, i, m, maxdistance, yy, j, counts, 0)
+		counts = counts.astype(int)
+		# check
+		#dists = scipy.spatial.distance.cdist(xx, yy, metric='euclidean')
+		#counts_true = (dists < maxdistance).sum(axis=0)
+		#assert (counts == counts_true).all(), (counts, counts_true)
+		return counts
+
+	def any_within_distance_of(xx, maxdistance, yy):
+		i, m = xx.shape
+		j = len(yy)
+		counts = numpy.zeros(len(yy))
+		r = lib.count_within_distance_of(xx, i, m, maxdistance, yy, j, counts, 1)
+		counts = counts > 0
+		# check
+		#dists = scipy.spatial.distance.cdist(xx, yy, metric='euclidean')
+		#counts_true = (dists < maxdistance).any(axis=0)
+		#assert (counts == counts_true).all(), (counts, counts_true)
+		return counts
+
 except ImportError as e:
 	print 'Using slow, high-memory neighborhood function nearest_rdistance_guess because import failed:', e
 except Exception as e:
