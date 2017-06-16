@@ -42,12 +42,16 @@ of the uncertainty.
 
 @return evidence contribution and uncertainty estimate
 """
-def integrate_remainder(sampler, logwidth, logVolremaining, logZ):
+def integrate_remainder(sampler, logwidth, logVolremaining, logZ, H, globalLmax):
 	# logwidth remains the same now for each sample
 	remainder = list(sampler.remainder())
 	logV = logwidth
 	L0 = remainder[-1][2]
+	logLs = [Li - L0 for ui, xi, Li in remainder]
 	Ls = numpy.exp([Li - L0 for ui, xi, Li in remainder])
+	LsMax = Ls.copy()
+	LsMax[-1] = numpy.exp(globalLmax - L0)
+	
 	"""
 		      x---   4
 		  x---       3
@@ -63,28 +67,37 @@ def integrate_remainder(sampler, logwidth, logVolremaining, logZ):
 	# the positive edge is L2, L3, ... L-1, L-1
 	# the average  edge is L1, L2, ... L-2, L-1
 	# the negative edge is L1, L1, ... L-2, L-2
-	Lmax = Ls[1:].sum() + Ls[-1]
+	#print globalLmax, ' '.join(['%.2f' % Li for Li in logLs])
+	Lmax = LsMax[1:].sum() + LsMax[-1]
+	#Lmax = Ls[1:].sum() + Ls[-1]
 	Lmin = Ls[:-1].sum() + Ls[0]
 	logLmid = log(Ls.sum()) + L0
-	
-	#print 'Lmax, Lmin:', Lmax, Lmin, Lmax - Lmin
-	#print 'Lmid:', logLmid
-	#logZ2 = -1e300
-	#for ui, xi, Li in remainder:
-	#	logZ2 = logaddexp(logZ2, Li)
-	#logZ2 = logaddexp(logZ2 + logwidth, logZ)
-	#logZ2 = logZ
-	#for ui, xi, Li in remainder:
-	#	logZ2 = logaddexp(logZ2, logwidth + Li)
-	
-	#logZerr = Lerr + logV
-	#print 'logZ:', logZ, logZerr
 	logZmid = logaddexp(logZ, logV + logLmid)
 	logZup  = logaddexp(logZ, logV + log(Lmax) + L0)
 	logZlo  = logaddexp(logZ, logV + log(Lmin) + L0)
-	logZerr = max(logZup - logZmid, logZmid - logZlo)
-	#print 'Z: %.3f [%.3f] -> %.3f + %.3f - %.3f -> %.3f' % (logZ, logZ2, logLmid + logV, logZup, logZlo, logZerr)
-	return logV + logLmid, logZerr
+	logZerr = logZup - logZlo
+	
+	# try bootstrapping for error estimation
+	bs_logZmids = []
+	for _ in range(20):
+		i = numpy.random.randint(0, len(Ls), len(Ls))
+		i.sort()
+		bs_Ls = LsMax[i]
+		Lmax = bs_Ls[1:].sum() + bs_Ls[-1]
+		bs_Ls = Ls[i]
+		Lmin = bs_Ls[:-1].sum() + bs_Ls[0]
+		bs_logZmids.append(logaddexp(logZ, logV + log(Lmax.sum()) + L0))
+		bs_logZmids.append(logaddexp(logZ, logV + log(Lmin.sum()) + L0))
+	bs_logZerr = numpy.max(bs_logZmids) - numpy.min(bs_logZmids)
+	
+	for i in range(len(remainder)):
+		ui, xi, Li = remainder[i]
+		wi = logwidth + Li
+		logZnew = logaddexp(logZ, wi)
+		H = exp(wi - logZnew) * Li + exp(logZ - logZnew) * (H + logZ) - logZnew
+		logZ = logZnew
+	
+	return logV + logLmid, logZerr, logZmid, logZerr + (H / sampler.nlive_points)**0.5, bs_logZerr + (H / sampler.nlive_points)**0.5
 
 #integrate_remainder = conservative_estimator
 
@@ -107,7 +120,10 @@ is exceeded.
   information: information H
   niterations: number of nested sampling iterations
 """
-def nested_integrator(sampler, tolerance = 0.01, max_samples=None):
+def nested_integrator(sampler, tolerance = 0.01, max_samples=None, 
+	need_small_remainder=True, max_remainder=0.1,
+	need_robust_remainder_error=False
+):
 	logVolremaining = 0
 	logwidth = log(1 - exp(-1. / sampler.nlive_points))
 	weights = [] #[-1e300, 1]]
@@ -144,29 +160,31 @@ def nested_integrator(sampler, tolerance = 0.01, max_samples=None):
 		i_final = -sampler.nlive_points * (-sampler.Lmax + log(exp(max(tolerance - logZerr, logZerr / 100.) + logZ) - exp(logZ)))
 		pbar.maxval = min(max(i+1, i_final), i+100000)
 		#logmaxContribution = logZup - logZ
-		remainderZ, remainderZerr = integrate_remainder(sampler, logwidth, logVolremaining, logZ)
 		
-		if len(weights) > sampler.nlive_points:
+		if i == 1 or (i > sampler.nlive_points and i % 10 == 1):
+			remainderZ, remainderZerr, totalZ, totalZerr, totalZerr_bootstrapped = integrate_remainder(
+				sampler, logwidth, logVolremaining, logZ, H, sampler.Lmax)
+		
+		if i > sampler.nlive_points:
 			# tolerance
-			total_error = logZerr + remainderZerr
-			#total_error = logZerr + logmaxContribution
+			total_error = totalZerr
 			if max_samples is not None and int(max_samples) < int(sampler.ndraws):
 				pbar.finish()
 				print 'maximum number of samples reached'
 				break
-			if total_error < tolerance:
+			if total_error < tolerance and (not need_small_remainder or remainderZ < totalZ + log(max_remainder)) and (not need_robust_remainder_error or totalZerr_bootstrapped < tolerance):
 				pbar.finish()
-				print 'tolerance reached:', total_error, logZerr, remainderZerr
+				print 'tolerance on error reached: total=%.4f (BS: %.4f) stat=%.4f remainder=%.4f' % (total_error, totalZerr_bootstrapped, logZerr, remainderZerr)
 				break
 			# we want to make maxContribution as small as possible
 			#   but if it becomes 10% of logZerr, that is enough
-			if remainderZerr < logZerr / 10.:
+			if remainderZerr < logZerr / 10.: # and remainderZ < totalZ - log(10):
 				pbar.finish()
 				print 'tolerance will not improve: remainder error (%.3f) is much smaller than systematic errors (%.3f)' % (logZerr, remainderZerr)
 				break
 		
-		widgets[0] = '|%d/%d samples+%d/%d|lnZ = %.2f +- %.3f + %.3f|L=%.2e @ %s' % (
-			i + 1, pbar.maxval, sampler.nlive_points, sampler.ndraws, logaddexp(logZ, remainderZ), logZerr, remainderZerr, Li,
+		widgets[0] = '|%d/%d samples+%d/%d|lnZ = %.2f +- %.3f + %.3f|L=%.2f @ %s' % (
+			i + 1, pbar.maxval, sampler.nlive_points, sampler.ndraws, totalZ, logZerr, remainderZerr, Li,
 			numpy.array_str(xi, max_line_width=1000, precision=4))
 		ui, xi, Li = sampler.next()
 		wi = logwidth + Li
@@ -176,12 +194,11 @@ def nested_integrator(sampler, tolerance = 0.01, max_samples=None):
 	
 	# not needed for integral, but for posterior samples, otherwise there
 	# is a hole in the most likely parameter ranges.
-	remainderZ, remainderZerr = integrate_remainder(sampler, logwidth, logVolremaining, logZ)
+	remainderZ, remainderZerr, totalZ, totalZerr, totalZerr_bootstrapped = integrate_remainder(sampler, logwidth, logVolremaining, logZ, H, sampler.Lmax)
 	weights += [[ui, xi, Li, logwidth] for ui, xi, Li in sampler.remainder()]
-	logZerr += remainderZerr
-	logZ = logaddexp(logZ, remainderZ)
-	
-	return dict(logZ=logZ, logZerr=logZerr, 
+	if need_robust_remainder_error:
+		totalZerr = max(totalZerr, totalZerr_bootstrapped)
+	return dict(logZ=totalZ, logZerr=totalZerr, 
 		samples=sampler.samples, weights=weights, information=H,
 		niterations=i)
 

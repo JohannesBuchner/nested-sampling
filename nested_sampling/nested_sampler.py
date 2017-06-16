@@ -18,13 +18,15 @@ class NestedSampler(object):
 	This class is implemented as an iterator.
 	"""
 	def __init__(self, priortransform, loglikelihood, draw_constrained, 
-			ndim = None, nlive_points = 200, draw_global_uniform = None):
+			ndim = None, nlive_points = 200, draw_global_uniform = None,
+			constrainer_get_Lmax=None):
 		self.nlive_points = nlive_points
 		self.priortransform = priortransform
 		self.loglikelihood = loglikelihood
 		self.draw_constrained = draw_constrained
 		self.samples = []
 		self.ndim = ndim
+		self.constrainer_get_Lmax = constrainer_get_Lmax
 		if ndim is not None:
 			self.draw_global_uniform = lambda: numpy.random.uniform(0, 1, size=ndim)
 		else:
@@ -81,6 +83,8 @@ class NestedSampler(object):
 		live_pointsx[i] = xj
 		live_pointsL[i] = Lj
 		self.Lmax = max(Lj, self.Lmax)
+		if self.constrainer_get_Lmax is not None:
+			self.Lmax = max(self.constrainer_get_Lmax(), self.Lmax)
 		self.samples.append([uj, xj, Lj])
 		self.ndraws += int(n)
 		return ui, xi, Li
