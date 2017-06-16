@@ -198,11 +198,13 @@ def run_algorithm(p, a):
 		value = numpy.mean([result['Z_computed'] for result in results])
 		#accuracy = numpy.mean([(result['Z_computed'] - p['Z_analytic'])**2 for result in results])**0.5
 		#accuracy = numpy.mean([numpy.abs(result['Z_computed'] - p['Z_analytic']) for result in results])
+		scatter = numpy.std([numpy.abs(result['Z_computed']) for result in results])
 		accuracy = numpy.median([numpy.abs(result['Z_computed'] - p['Z_analytic']) for result in results])
 		predictedaccuracy = numpy.mean([result['Z_computed_err'] for result in results])
 		summary.update(dict(
 			value=value,
 			accuracy=accuracy, 
+			scatter=scatter, 
 			predictedaccuracy=predictedaccuracy))
 	except KeyError as e:
 		pass
@@ -242,6 +244,7 @@ def show_results(results):
 <html>
 <head>
 	<title>Nested Sampling Algorithm comparison</title>
+	<link rel="stylesheet" type="text/css" href="style.css" >
 %s""" % header)
 	for problem, algs in results:
 		fout.write("""
@@ -254,6 +257,7 @@ def show_results(results):
 <tr><th>Algorithm</th>
 <th>Rank</th>
 <th>Z Result</th>
+<th>Typical offset</th>
 <th>Actual scatter</th>
 <th>Claimed accuracy</th>
 <th>evaluations</th>
@@ -297,6 +301,7 @@ def show_results(results):
 					<td class="result-wrong">(failure)</td>
 					<td class="result-wrong">(failure)</td>
 					<td class="result-wrong">(failure)</td>
+					<td class="result-wrong">(failure)</td>
 					<td>%d</td>
 				""" % results['neval'])
 				latexout.write(r"(failure) & (failure) & (failure) & %d " % results['neval'])
@@ -304,11 +309,13 @@ def show_results(results):
 				result_class = 'ok' if abs(results['value'] - problem['Z_analytic']) < 2 * TARGET_ACCURACY else 'wrong'
 				accuracy_class = 'ok' if abs(results['accuracy']) < 2 * TARGET_ACCURACY else 'wrong'
 				claim_class = 'ok' if results['accuracy'] < 2 * results['predictedaccuracy'] else 'wrong'
-				fmt = dict(result_class=result_class, accuracy_class=accuracy_class, claim_class=claim_class)
+				scatter_class = 'ok' if results['scatter'] < 2 * TARGET_ACCURACY else 'wrong'
+				fmt = dict(result_class=result_class, accuracy_class=accuracy_class, scatter_class=scatter_class, claim_class=claim_class)
 				fmt.update(results)
 				fout.write("""
 					<td class="result-%(result_class)s">%(value).4f</td>
 					<td class="result-%(accuracy_class)s">%(accuracy).4f</td>
+					<td class="result-%(scatter_class)s">%(scatter).4f</td>
 					<td class="result-%(claim_class)s">%(predictedaccuracy).4f</td>
 					<td>%(neval)d</td>
 				""" % fmt)

@@ -3,3 +3,4 @@
 *.pdf
 [_]build/
 *.egg-info/
+*.so

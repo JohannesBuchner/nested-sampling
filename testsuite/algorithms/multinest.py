@@ -25,6 +25,10 @@ def run_multinest(**config):
 			sys.exit(-127)
 		return l
 	nlive_points = config['nlive_points']
+	if config.get('unlimited_sampling', False):
+		max_samples = 0
+	else:
+		max_samples = 2000000
 	mn_args = dict(
 		importance_nested_sampling = config['importance_nested_sampling'],
 		outputfiles_basename = output_basename + 'out_',
@@ -36,7 +40,7 @@ def run_multinest(**config):
 		const_efficiency_mode = False,
 		evidence_tolerance = 0.5,
 		seed = config['seed'],
-		max_iter = 2000000,
+		max_iter = max_samples,
 	)
 	starttime = time.time()
 	pymultinest.run(myloglike, myprior, mn_args['n_params'], **mn_args)

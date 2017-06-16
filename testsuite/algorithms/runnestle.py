@@ -5,7 +5,7 @@ import itertools
 import nestle
 import numpy
 from numpy import log, exp
-
+import sys
 import time
 
 def run_nestle(**config):
@@ -14,6 +14,14 @@ def run_nestle(**config):
 	def priortransform(u):
 		assert len(u) == ndim, u
 		return u
+	def dump_callback(info):
+		sys.stderr.write("\r%d|%d|logz=%.4f|eff=%f%%    " % (info['it'], info['ncall'], info['logz'], info['it']*100./info['ncall']))
+		
+		#if info['it'] % 50 != 0: return
+		#print "Replacements: %d" % (info['ncall'])
+		#print "Samples: %d" % (info['it'])
+		#print "Efficiency: %f" % (info['ncall']/info['it'])
+		#print "Nested Sampling ln(Z): %f" % (info['logz'])
 	if 'seed' in config:
 		numpy.random.seed(config['seed'])
 	
@@ -21,14 +29,23 @@ def run_nestle(**config):
 	loglikelihood = config['loglikelihood']
 	nlive_points = config['nlive_points']
 	method = config['method']
-	
+	if config.get('unlimited_sampling', False):
+		max_samples = None
+	else:
+		max_samples = 2000000
+	print
 	print 'running nestle ...'
+	options = dict()
+	#if 'enlarge' in config:
+	#	options['enlarge'] = config['enlarge']
 	starttime = time.time()
 	result = nestle.sample(loglikelihood=loglikelihood, prior_transform=priortransform, ndim=ndim, npoints=nlive_points,
-		method=method, update_interval=None, maxcall=2000000, dlogz=0.5, rstate=numpy.random)
+		method=method, update_interval=None, maxcall=max_samples, dlogz=0.5, rstate=numpy.random, callback=dump_callback,
+		**options)
 	endtime = time.time()
 	output_basename = config['output_basename']
-	print 'nestle done lnZ = %(logz).1f +- %(logzerr).1f' % (result)
+	print
+        print 'nestle done lnZ = %(logz).1f +- %(logzerr).1f' % (result)
 	
 	if config.get('seed', 0) == 0:
 		import matplotlib.pyplot as plt
@@ -64,18 +81,26 @@ def run_nestle(**config):
 	return dict(
 		Z_computed = float(result['logz']),
 		Z_computed_err = float(result['logzerr']),
-		niterations = result['ncall'],
+		niterations = result['niter'],
 		duration = endtime - starttime,
 	)
 
 configs = [
 	[
-		#dict(nlive_points=100),
+		dict(nlive_points=100),
 		dict(nlive_points=400),
 		dict(nlive_points=1000),
 	], [
+		dict(method='classic'),
 		dict(method='single'),
 		dict(method='multi'),
+		#dict(method='single-robust'),
+		#dict(method='multi-robust'),
+		#dict(method='single-veryrobust'),
+		#dict(method='multi-veryrobust'),
+		#dict(method='multi-limitedrobust'),
+		#dict(method='multi-simplelimitedrobust'),
+		dict(method='multi-rememberingrobust'),
 	]
 ]
 configs = [dict([[k, v] for d in config for k, v in d.iteritems()]) for config in itertools.product(*configs)]

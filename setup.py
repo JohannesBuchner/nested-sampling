@@ -7,7 +7,7 @@ with open('README.rst') as f:
 	long_description = f.read()
 
 setup(name='nested_sampling',
-	version='0.1',
+	version='0.2',
 	author='Johannes Buchner',
 	url='https://bitbucket.org/JohannesBuchner/nested-sampling',
 	author_email='johannes.buchner.acad@gmx.com',

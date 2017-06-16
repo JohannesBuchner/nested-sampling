@@ -74,7 +74,7 @@ def create_problem_gauss(**config):
 
 def create_problem_gauss_multimodal(**config):
 	ndim = config.get('ndim', 2)
-	assert ndim >= 2
+	assert ndim >= 2, ('ndim must be at least 2')
 	
 	def loglikelihood(y):
 		x = numpy.asarray(y)
@@ -109,25 +109,98 @@ def create_problem_gauss_multimodal(**config):
 
 def create_problem_vargauss(**config):
 	ndim = config.get('ndim', 10)
-	i = numpy.arange(ndim) + 3.0
+	assert ndim > 3, ('ndim must be at least 3')
+	i = numpy.arange(ndim - 3)
 	mu = 0.54321
-	s = 6./((3.*i)**1.4)
+	s = 10**(-((i + 2))*0.5)
 	def loglikelihood(x):
-		z = numpy.asarray(x)
+		z = numpy.asarray(x[3:])
 		return -0.5 * (((z - mu)/s)**2).sum()
 	
 	Z_analytic = 0.5 * log(2*pi * s**2).sum()
 	config['loglikelihood'] = loglikelihood
 	config['Z_analytic'] = Z_analytic
 	config['description'] = """Sequence of independent gaussians which become
-	narrower and narrower with the dimension number. Symmetric, %d dimensions.
+	narrower and narrower with the dimension number. 
+	The first three dimensions are unconstrained.
+	Difficult because the parameter sizes are orders of magnitudes different,
+	and region of interest is tiny.
+	Symmetric, %d dimensions. 
 	""" % ndim
 	return config
 
 
+def create_problem_corrgauss(**config):
+	ndim = config.get('ndim', 10)
+	difficulty = config.get('difficulty', 1)
+
+	logmatrix = numpy.zeros((ndim, ndim), dtype=int)
+	matrix = numpy.zeros((ndim, ndim))
+
+	for i in range(ndim):
+		for j in range(i+1):
+			logmatrix[i,j] = (((j*i) % (5+i)) // 2) % 5
+			logmatrix[j,i] = logmatrix[i,j]
+	
+	for i in range(ndim):
+		for j in range(i+1):
+			scalei = numpy.exp(-logmatrix[i,i] - 2)
+			scalej = numpy.exp(-logmatrix[j,j] - 2)
+			if i == j:
+				matrix[i,i] = scalei*scalej
+			else:
+				matrix[i,j] = (1 - numpy.exp(-logmatrix[i,j]*difficulty))*scalei*scalej
+				matrix[j,i] = (1 - numpy.exp(-logmatrix[j,i]*difficulty))*scalei*scalej
+	# ensure positive semi-definite
+	_, matrix = scipy.linalg.polar(matrix)
+	matrix = numpy.matrix(matrix)
+	invmatrix = numpy.linalg.inv(matrix)
+	mu = 0.5 + numpy.zeros(ndim)
+	assert numpy.linalg.det(matrix) > 0, numpy.linalg.det(matrix)
+	norm = -0.5 * log(numpy.linalg.det(2 * pi * matrix))
+	def loglikelihood(x):
+		z = numpy.asarray(x) - mu
+		return -0.5 * numpy.dot(numpy.dot(z, invmatrix), z.T) + norm
+	
+	Z_analytic = 0
+	config['loglikelihood'] = loglikelihood
+	config['Z_analytic'] = Z_analytic
+	config['description'] = """Correlated gaussian likelihood in %d dimensions. 
+	-log(1 - correlation matrix) is: <pre>%s</pre>
+	Centred at 0.5.
+	""" % (ndim, logmatrix*difficulty)
+	return config
+
+
+
+def create_problem_gauss_i(**config):
+	ndim = config.get('ndim', 10)
+	mu1 = 0.654321
+	mu2 = 0.123456
+	s1 = 0.1
+	s2 = 0.01
+	norm1 = -0.5 * log(2*pi*s1**2) * ndim
+	norm2 = -0.5 * log(2*pi*s2**2) * ndim + log(100)
+	def loglikelihood(x):
+		z = numpy.asarray(x)
+		return numpy.logaddexp(norm1 - 0.5 * ((((z - mu1)/s1)**2)).sum(), 
+			norm2 - 0.5 * (((z - mu2)/s2)**2).sum())
+	
+	Z_analytic = log(101)
+	config['loglikelihood'] = loglikelihood
+	config['Z_analytic'] = Z_analytic
+	config['description'] = """Two gaussian solutions, one large 0.654321+-0.1, one small 0.123456+-0.01, in %d dimensions.
+	
+	<p>This function may be difficult if the smaller solution is lost,
+	because by area it is small; but later it turns out to be the important one.
+	""" % ndim
+	return config
+
+
+
 def create_problem_halfgauss(**config):
 	ndim = config.get('ndim', 2)
-	assert ndim >= 2
+	assert ndim >= 2, ('ndim must be at least 2')
 	
 	def loglikelihood(y):
 		x = numpy.asarray(y)
@@ -295,7 +368,7 @@ def create_problem_triangle_rotated(**config):
 
 def create_problem_pyramid(**config):
 	ndim = config.get('ndim', 20)
-	assert ndim >= 2
+	assert ndim >= 2, ('ndim must be at least 2')
 	
 	def loglikelihood(x):
 		x = numpy.asarray(x)
