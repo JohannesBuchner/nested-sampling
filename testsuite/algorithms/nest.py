@@ -1,7 +1,8 @@
-from __future__ import print_function
+
 """
 Runs Python-implemented Nested Sampling algorithms from this package.
 """
+from __future__ import print_function
 import json
 import itertools
 import numpy
@@ -277,7 +278,7 @@ def run_nested(**config):
 	
 	if config.get('seed', 0) == 0:
 		# drawn samples
-		print 'plotting drawn samples...'
+		print('plotting drawn samples...')
 		x = numpy.array([x for _, x, _ in sampler.samples])
 		y = exp([l for _, _, l in sampler.samples])
 		plt.plot(x[:,0], y, 'x', color='blue', ms=1)
@@ -323,7 +324,7 @@ def run_nested(**config):
 		plt.savefig(output_basename + 'convergence_Z.pdf', bbox_inches='tight')
 		plt.close()
 
-		print 'plotting convergence history...'
+		print('plotting convergence history...')
 		plt.figure()
 		plt.plot(termination.plotdata['normalZerr'], label='NS')
 		plt.plot(termination.plotdata['remainderZerr'], label='remainder')
@@ -488,7 +489,7 @@ configs = [
 		dict(integrator='normal-max'), 
 	]
 ]
-configs = [dict([[k, v] for d in config for k, v in d.iteritems()]) for config in itertools.product(*configs)]
+configs = [dict([[k, v] for d in config for k, v in d.items()]) for config in itertools.product(*configs)]
 for c in configs:
 	c['algorithm_name'] = 'NS-%s-nlive%d%s' % (c['draw_method'], c['nlive_points'],
 		('-' + c['integrator']) if c['integrator'] != 'normal' else '')

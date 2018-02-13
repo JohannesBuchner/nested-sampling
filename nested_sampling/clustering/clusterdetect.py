@@ -1,4 +1,4 @@
-from __future__ import print_function
+
 import scipy, scipy.stats, scipy.cluster
 import numpy
 from numpy import exp, log, log10
@@ -24,7 +24,7 @@ def cut_cluster(cluster, distances, threshold, minsize=30, verbose=1):
 		tree[i + n] = (int(a), int(b), distance, entries)
 	
 	isparent = numpy.zeros(n*2 - 1) == 0
-	for i, (a, b, dist, entries) in tree.iteritems():
+	for i, (a, b, dist, entries) in tree.items():
 		nchildren = min(cluster[a - n][3] if a >= n else 1, cluster[b - n][3] if a >= n else 1)
 		if nchildren <= minsize or (isparent[a] and isparent[b] and dist < threshold):
 			# node is too small so far, or children are near
@@ -40,7 +40,7 @@ def cut_cluster(cluster, distances, threshold, minsize=30, verbose=1):
 	ids = set(numpy.arange(n*2 - 1)[isparent])
 	if verbose > 1:
 		print('  parents:', ids)
-		for i, (a, b, dist, entries) in tree.iteritems():
+		for i, (a, b, dist, entries) in tree.items():
 			if i in ids or a in ids or b in ids:
 				print('    %3d: %3d%s %3d%s %.2f %3d' % (i, a, 
 					'*' if a < n else ' ', b, '*' if b < n else ' ', dist, entries))

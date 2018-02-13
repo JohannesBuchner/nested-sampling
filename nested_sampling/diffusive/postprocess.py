@@ -93,8 +93,8 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[],
 			plt.draw()
 
 	# Convert to lists of tuples
-	logl_levels = [(levels_orig[i,1], levels_orig[i, 2]) for i in xrange(0, levels_orig.shape[0])] # logl, tiebreaker
-	logl_samples = [(sample_info[i, 1], sample_info[i, 2], i) for i in xrange(0, sample.shape[0])] # logl, tiebreaker, id
+	logl_levels = [(levels_orig[i,1], levels_orig[i, 2]) for i in range(0, levels_orig.shape[0])] # logl, tiebreaker
+	logl_samples = [(sample_info[i, 1], sample_info[i, 2], i) for i in range(0, sample.shape[0])] # logl, tiebreaker, id
 	logx_samples = np.zeros((sample_info.shape[0], numResampleLogX))
 	logp_samples = np.zeros((sample_info.shape[0], numResampleLogX))
 	logP_samples = np.zeros((sample_info.shape[0], numResampleLogX))
@@ -104,11 +104,11 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[],
 
 	# Find sandwiching level for each sample
 	sandwich = sample_info[:,0].copy().astype('int')
-	for i in xrange(0, sample.shape[0]):
+	for i in range(0, sample.shape[0]):
 		while sandwich[i] < levels_orig.shape[0]-1 and logl_samples[i] > logl_levels[sandwich[i] + 1]:
 			sandwich[i] += 1
 
-	for z in xrange(0, numResampleLogX):
+	for z in range(0, numResampleLogX):
 		# Make a monte carlo perturbation of the level compressions
 		levels = levels_orig.copy()
 		compressions = -np.diff(levels[:,0])
@@ -122,7 +122,7 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[],
 			# Find the samples sandwiched by this level
 			which = np.nonzero(sandwich == i)[0]
 			logl_samples_thisLevel = [] # (logl, tieBreaker, ID)
-			for j in xrange(0, len(which)):
+			for j in range(0, len(which)):
 				logl_samples_thisLevel.append(copy.deepcopy(logl_samples[which[j]]))
 			logl_samples_thisLevel = sorted(logl_samples_thisLevel)
 			N = len(logl_samples_thisLevel)
@@ -141,7 +141,7 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[],
 				U = Umin + (1. - Umin)*np.linspace(1./(N+1), 1. - 1./(N+1), N)
 			logx_samples_thisLevel = np.sort(logx_max + np.log(U))[::-1]
 
-			for j in xrange(0, which.size):
+			for j in range(0, which.size):
 				logx_samples[logl_samples_thisLevel[j][2]][z] = logx_samples_thisLevel[j]
 
 				if j != which.size - 1:
@@ -223,7 +223,7 @@ def postprocess(temperature=1., numResampleLogX=1, plot=True, loaded=[],
 	w = w/np.max(w)
 	if save:
 		np.savetxt(prefix + 'weights.txt', w) # Save weights
-	for i in xrange(0, N):
+	for i in range(0, N):
 		while True:
 			which = np.random.randint(sample.shape[0])
 			if np.random.rand() <= w[which]:

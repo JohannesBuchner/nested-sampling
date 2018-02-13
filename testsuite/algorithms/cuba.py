@@ -1,7 +1,8 @@
-from __future__ import print_function
+
 """
 Runs the Cuba algorithms: Vegas, Suave, Divonne, Cuhre
 """
+from __future__ import print_function
 import os
 # don't use parallelization, because pycuba gets confused, and we parallize runs anyways
 os.environ['CUBACORES'] = "1"
@@ -49,14 +50,14 @@ def run_cuba(**config):
 		keys = ['nregions', 'neval', 'fail']
 		keys = list(filter(results.has_key, keys))
 		text = ["%s %d" % (k, results[k]) for k in keys]
-		print ("%s RESULT:\t" % name.upper() + "\t".join(text))
+		print("%s RESULT:\t" % name.upper() + "\t".join(text))
 		for comp in results['results']:
-			print ("%s RESULT:\t" % name.upper() + "%(integral).8f +- %(error).8f\tp = %(prob).3f\n" % comp)
+			print("%s RESULT:\t" % name.upper() + "%(integral).8f +- %(error).8f\tp = %(prob).3f\n" % comp)
 	starttime = time.time()
 	if config['cuba_algorithm'] == 'Vegas':
 		results = pycuba.Vegas(Integrand, NDIM, verbose=2, **commonargs)
 	elif config['cuba_algorithm'] == 'Suave':
-		print Integrand, NDIM, NNEW, FLATNESS, 2 | 4, commonargs
+		print(Integrand, NDIM, NNEW, FLATNESS, 2 | 4, commonargs)
 		results = pycuba.Suave(Integrand, NDIM, nnew=NNEW, flatness=FLATNESS, verbose=2 | 4, **commonargs)
 	elif config['cuba_algorithm'] == 'Divonne':
 		results = pycuba.Divonne(Integrand, NDIM,

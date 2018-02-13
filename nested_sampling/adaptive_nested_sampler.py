@@ -109,7 +109,7 @@ class AdaptiveNestedSampler(object):
 	def remainder(self):
 		for L, u, x in self.live_points:
 			yield u, x, L
-	def next(self):
+	def __next__(self):
 		return self.__next__()
 	def __iter__(self):
 		while True: yield self.__next__()

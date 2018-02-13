@@ -42,22 +42,22 @@ plt.close()
 vals = (numpy.max([samples[sortx][:-1], samples[sortx][1:]], axis=0) * weights)
 vals /= vals.sum()
 mask = vals < 0.01 / len(samples)
-print 'small contributions:', mask.sum()
+print('small contributions:', mask.sum())
 # select maximum likelihood of those
 maxlike = samples[sortx][mask].max()
-print 'max like in small contributions:', maxlike
+print('max like in small contributions:', maxlike)
 mask = samples[sortx] > maxlike
 
 # use points above this criterion
 assert mask.sum() > 3
-print 'selecting %d of %d for clustering' % (mask.sum(), len(mask))
+print('selecting %d of %d for clustering' % (mask.sum(), len(mask)))
 highpoints = numpy.reshape(values[sortx][mask], (-1, 1))
-print 'distance matrix...'
+print('distance matrix...')
 distances = scipy.spatial.distance.cdist(highpoints, highpoints)
 
 # make dendrogram based on euclidean distances, always merge smallest distance
 # make histogram of distances
-print 'clustering...'
+print('clustering...')
 cluster = scipy.cluster.hierarchy.single(distances)
 
 assert len(cluster) == len(distances) - 1
@@ -80,7 +80,7 @@ fout.write("}\n")
 
 scipy.cluster.hierarchy.dendrogram(cluster)
 
-print 'saving...'
+print('saving...')
 clusterdists = cluster[:,2]
 plt.savefig('x_dendro.pdf', bbox_inches='tight')
 plt.close()
@@ -111,7 +111,7 @@ plot_cluster(scipy.cluster.hierarchy.fcluster(cluster, t=4, criterion='maxclust'
 #	t=(clusterdists.max() + numpy.median(clusterdists))/2,
 #	criterion='distance'), 'middle break clustering')
 plot_cluster(cut_cluster(tree, distances, scipy.stats.mstats.mquantiles(clusterdists, 0.1)*20 + clusterdists.max()/2), 'middle break clustering')
-print scipy.stats.mstats.mquantiles(clusterdists, 0.99)
+print(scipy.stats.mstats.mquantiles(clusterdists, 0.99))
 #plot_cluster(scipy.cluster.hierarchy.fcluster(cluster, 
 #	t=scipy.stats.mstats.mquantiles(clusterdists, 0.9),
 #	criterion='distance'), '90% quantile clustering')

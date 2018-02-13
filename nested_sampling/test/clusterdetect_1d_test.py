@@ -38,7 +38,7 @@ fout.write("}\n")
 
 scipy.cluster.hierarchy.dendrogram(cluster)
 
-print 'saving...'
+print('saving...')
 clusterdists = cluster[:,2]
 plt.savefig('x_1d_dendro.pdf', bbox_inches='tight')
 plt.close()

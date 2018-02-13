@@ -214,7 +214,7 @@ for i, algorithm_generator in list(enumerate(algorithms_generators)): #[::-1]:
 			problem = problem_generator(ndim)
 		except AssertionError as e:
 			# dimensionality may be too low for the problem
-			print 'skipping ndim=%s, because:' % ndim, e
+			print('skipping ndim=%s, because:' % ndim, e)
 			continue
 		#nlive_points = 25 * ndim
 		nlive_points = max(400, 25 * ndim)
@@ -235,22 +235,22 @@ for i, algorithm_generator in list(enumerate(algorithms_generators)): #[::-1]:
 		marker = algorithm['marker']
 		lw = 2 if ls == '-' else 1
 		name = algorithm['algorithm_name']
-		print 'preparing...', name, 'against', problem['problem_name']
+		print('preparing...', name, 'against', problem['problem_name'])
 		if name.startswith('NS-h') and 'switch' not in name and ndim > 16:
 			# no need to run these algorithms
-			print 'not running', name
+			print('not running', name)
 			continue
 		if 'multinest' in name and ndim >= 64:
-			print 'not running', name
+			print('not running', name)
 			continue
 		if 'nestle' in name and ndim > 100:
-			print 'not running', name
+			print('not running', name)
 			continue
 		result = testbase.run(problem, algorithm, seed=1)
 		if 'normal-bs' in name and result['Z_computed_err'] > 0.5:
 			# re-bootstrapping quotes too large errors
 			result['Z_computed_err'] = 0.5
-		print algorithm['algorithm_name'], result['neval'], result['Z_computed'], result['Z_computed_err']
+		print(algorithm['algorithm_name'], result['neval'], result['Z_computed'], result['Z_computed_err'])
 		true_value.append(problem['Z_analytic'])
 		dims_selected.append(ndim)
 		results.append(result)
@@ -264,7 +264,7 @@ for i, algorithm_generator in list(enumerate(algorithms_generators)): #[::-1]:
 			break
 		if result['neval'] > 20e6:
 			# already using a lot of evaluations, lets not go further
-			print 'already using a lot of evaluations, lets not go further'
+			print('already using a lot of evaluations, lets not go further')
 			break
 	if len(dims_selected) == 0: continue
 	plt.subplot(2, 1, 1)

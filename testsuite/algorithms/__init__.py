@@ -1,10 +1,10 @@
 """
 Algorithms known to man
 """
-import multinest
-import cuba
-import nest
-import runnestle
+from . import multinest
+from . import cuba
+from . import nest
+from . import runnestle
 
 algorithms = \
 	multinest.configs + \

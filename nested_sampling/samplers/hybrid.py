@@ -1,8 +1,8 @@
 import numpy
 import scipy.spatial, scipy.cluster
 import matplotlib.pyplot as plt
-from friends import FriendsConstrainer
-from mcmc import BaseProposal
+from .friends import FriendsConstrainer
+from .mcmc import BaseProposal
 import numpy
 from numpy import exp, log, log10, pi, cos, sin
 from nestle import bounding_ellipsoid, bounding_ellipsoids, sample_ellipsoids
@@ -169,7 +169,7 @@ class FilteredUnitHARMProposal(BaseProposal):
 		self.new_direction(u, ndim, points, is_inside_filter)
 	def new_direction(self, u, ndim, points, is_inside_filter):
 		d = self.generate_direction(u, ndim, points)
-		print 'initial scale:', self.scale
+		print('initial scale:', self.scale)
 		# find end points
 		forward_scale = self.scale
 		# find a scale that is too large
@@ -179,7 +179,7 @@ class FilteredUnitHARMProposal(BaseProposal):
 			if is_inside_filter(p_for):
 				# we are proposing too small. We should be outside
 				forward_scale *= 2
-				print 'too small, stepping further', forward_scale
+				print('too small, stepping further', forward_scale)
 			else:
 				break
 		
@@ -190,7 +190,7 @@ class FilteredUnitHARMProposal(BaseProposal):
 			p_rev = u - d * backward_scale
 			if is_inside_filter(p_rev):
 				# we are proposing too small. We should be outside
-				print 'too small, stepping back', backward_scale
+				print('too small, stepping back', backward_scale)
 				backward_scale *= 2
 			else:
 				break
@@ -202,7 +202,7 @@ class FilteredUnitHARMProposal(BaseProposal):
 	def propose(self, u, ndim, points, is_inside_filter):
 		# generate a random point between the two points.
 		while True:
-			print 'slice range:', (self.backward_scale, self.forward_scale)
+			print('slice range:', (self.backward_scale, self.forward_scale))
 			x = numpy.random.uniform(self.backward_scale, self.forward_scale)
 			p = u + self.direction * x
 			assert self.forward_scale - self.backward_scale > 1e-100
@@ -213,7 +213,7 @@ class FilteredUnitHARMProposal(BaseProposal):
 			if is_inside_filter(p):
 				if self.adapt:
 					self.scale = self.forward_scale - self.backward_scale
-					print 'adapting scale to', self.scale
+					print('adapting scale to', self.scale)
 				return p
 	
 	def accept(self, accepted):
@@ -405,13 +405,13 @@ class FilteredMCMCConstrainer(object):
 			if naccepts > 0:
 				break
 			else:
-				print 'restarting failed chain...'
+				print('restarting failed chain...')
 		#print 'accepted %d' % naccepts
 		#self.proposer.stats()
 		if Li < Lmin:
-			print
-			print 'ERROR: HybridMCMCConstrainer could not find a point matching constraint!'
-			print 'ERROR: Proposer stats:',
+			print()
+			print('ERROR: HybridMCMCConstrainer could not find a point matching constraint!')
+			print('ERROR: Proposer stats:')
 			self.proposer.stats()
 			assert Li >= Lmin, (Li, Lmin, self.nmaxsteps, numpy.mean(self.proposer.accepts), len(self.proposer.accepts))
 		self.start_finish_check(ui, startu, live_pointsu)
@@ -436,13 +436,13 @@ class FilteredSliceConstrainer(object):
 	def draw_constrained(self, Lmin, priortransform, loglikelihood, live_pointsu, ndim, live_points_and_phantoms_u, is_inside_filter, startu, startx, startL):
 		ui, xi, Li = startu, startx, startL
 		assert Li >= Lmin, (Li, Lmin)
-		print 'new chain...', Lmin, Li, startu
+		print('new chain...', Lmin, Li, startu)
 		self.proposer.new_chain(ui, ndim, live_points_and_phantoms_u, is_inside_filter)
 		for i in range(self.nsteps):
 			n = 0
 			naccepts = 0
 			while True:
-				print 'proposing ...', ui
+				print('proposing ...', ui)
 				u = self.proposer.propose(ui, ndim, live_points_and_phantoms_u, is_inside_filter)
 				x = priortransform(u)
 				L = loglikelihood(x)
@@ -460,7 +460,7 @@ class FilteredSliceConstrainer(object):
 				if accept:
 					ui, xi, Li = u, x, L
 					naccepts += 1
-					print 'accepting; new direction.', Lmin, u, L
+					print('accepting; new direction.', Lmin, u, L)
 					self.proposer.new_direction(ui, ndim, live_points_and_phantoms_u, is_inside_filter)
 					break
 			
@@ -468,9 +468,9 @@ class FilteredSliceConstrainer(object):
 		#print 'accepted %d' % naccepts
 		#self.proposer.stats()
 		if Li < Lmin:
-			print
-			print 'ERROR: FilteredSliceConstrainer could not find a point matching constraint!'
-			print 'ERROR: Proposer stats:',
+			print()
+			print('ERROR: FilteredSliceConstrainer could not find a point matching constraint!')
+			print('ERROR: Proposer stats:')
 			self.proposer.stats()
 			assert Li >= Lmin, (Li, Lmin, self.nsteps, numpy.mean(self.proposer.accepts), len(self.proposer.accepts))
 		self.start_finish_check(ui, startu, live_pointsu)
@@ -508,11 +508,11 @@ class FilteredVarlengthMCMCConstrainer(FilteredMCMCConstrainer):
 		if k > lam * n and prob < 2.87e-7: # 5 sigma
 			self.nsteps = self.nsteps * 2
 			self.nminaccepts = self.nminaccepts * 2
-			print 'Saw %d/%d start~end cases, expected %.1f, probability is %.2e --> extending MCMC chains to %d steps' % (k, n, lam*n, prob, self.nsteps)
+			print('Saw %d/%d start~end cases, expected %.1f, probability is %.2e --> extending MCMC chains to %d steps' % (k, n, lam*n, prob, self.nsteps))
 			self.last_was_start_memory = []
 	
 	def stats(self):
-		print 'FilteredVarlengthMCMCConstrainer: final nsteps was %d' % self.nsteps
+		print('FilteredVarlengthMCMCConstrainer: final nsteps was %d' % self.nsteps)
 		return self.proposer.stats()
 
 class HybridFriendsConstrainer(object):
@@ -534,7 +534,7 @@ class HybridFriendsConstrainer(object):
 		if self.use_direct_draw:
 			u, x, L, ntoaccept = self.friends.draw_constrained(Lmin=Lmin, priortransform=priortransform, loglikelihood=loglikelihood, live_pointsu=live_pointsu, ndim=ndim, startu=startu, startx=startx, startL=startL, **kwargs)
 			if 1. / ntoaccept < self.switchover_efficiency:
-				print 'low efficiency triggered switching over to MCMC'
+				print('low efficiency triggered switching over to MCMC')
 				self.use_direct_draw = False
 			return u, x, L, ntoaccept
 		
@@ -551,11 +551,11 @@ class HybridFriendsConstrainer(object):
 				# yay, we win
 				if ntotalsum > 10000: 
 					if self.verbose: 
-						print 'sampled %d points, evaluated %d ' % (ntotalsum, ntoaccept)
+						print('sampled %d points, evaluated %d ' % (ntotalsum, ntoaccept))
 						#self.debugplot(u)
 				#print 'returning:', u, x, L, ntoaccept
 				return u, x, L, ntoaccept
-			print 'unsuccessful search; trying different starting point'
+			print('unsuccessful search; trying different starting point')
 			# unsuccessful search so far. Try a different start point.
 			starti = numpy.random.randint(len(live_pointsu))
 			startu = live_pointsu[starti]
@@ -569,7 +569,7 @@ class HybridFriendsConstrainer(object):
 				self.friends.rebuild(numpy.asarray(live_pointsu), ndim, keepRadius=False)
 
 	def stats(self):
-		print 'HybridFriendsConstrainer: %s' % ('used direct draws throughout (no MCMC)' if self.use_direct_draw else 'switched over to MCMC')
+		print('HybridFriendsConstrainer: %s' % ('used direct draws throughout (no MCMC)' if self.use_direct_draw else 'switched over to MCMC'))
 		return self.mcmc_proposer.stats()
 
 class HybridMLFriendsConstrainer(object):
@@ -610,7 +610,7 @@ class HybridMLFriendsConstrainer(object):
 		if self.use_direct_draw and self.friends.direct_draws_efficient:
 			u, x, L, ntoaccept = self.friends.draw_constrained(Lmin=Lmin, priortransform=priortransform, loglikelihood=loglikelihood, live_pointsu=live_pointsu, ndim=ndim, startu=startu, startx=startx, startL=startL, **kwargs)
 			if 1. / ntoaccept < self.switchover_efficiency:
-				print 'low efficiency triggered switching over to MCMC'
+				print('low efficiency triggered switching over to MCMC')
 				self.use_direct_draw = False
 			return u, x, L, ntoaccept
 		
@@ -649,7 +649,7 @@ class HybridMLFriendsConstrainer(object):
 				self.friends.rebuild(numpy.asarray(live_pointsu), ndim, keepMetric=False)
 
 	def stats(self):
-		print 'HybridFriendsConstrainer: %s' % ('used direct draws throughout (no MCMC)' if self.use_direct_draw else 'switched over to MCMC')
+		print('HybridFriendsConstrainer: %s' % ('used direct draws throughout (no MCMC)' if self.use_direct_draw else 'switched over to MCMC'))
 		return self.mcmc_proposer.stats()
 
 class HybridMultiEllipsoidConstrainer(object):
@@ -703,7 +703,7 @@ class HybridMultiEllipsoidConstrainer(object):
 				if Lmin is None or L > Lmin:
 					return u, x, L, ntoaccept
 				if 1. / ntoaccept < self.switchover_efficiency:
-					print 'low efficiency triggered switching over to MCMC'
+					print('low efficiency triggered switching over to MCMC')
 					self.use_direct_draw = False
 					break
 		while True:
@@ -728,7 +728,7 @@ class HybridMultiEllipsoidConstrainer(object):
 				self.update(live_pointsu)
 
 	def stats(self):
-		print 'HybridFriendsConstrainer: %s' % ('used direct draws throughout (no MCMC)' if self.use_direct_draw else 'switched over to MCMC')
+		print('HybridFriendsConstrainer: %s' % ('used direct draws throughout (no MCMC)' if self.use_direct_draw else 'switched over to MCMC'))
 		return self.mcmc_proposer.stats()
 
 from nested_sampling.clustering.sdml import IdentityMetric, SimpleScaling, TruncatedScaling, MahalanobisMetric, TruncatedMahalanobisMetric, SDML, TruncatedSDML
@@ -797,7 +797,7 @@ class HybridMLMultiEllipsoidConstrainer(object):
 			enlarge = max(self.lastdistmax[-self.bs_memory:])
 			enlarge = max(1, min(100, enlarge))
 			enlarge = enlarge * ndim**0.5
-			print 'enlargement factor: %.2f' % enlarge, 'memory: ', ' '.join(['%.2f' % d for d in self.lastdistmax[-self.bs_memory:]])
+			print('enlargement factor: %.2f' % enlarge, 'memory: ', ' '.join(['%.2f' % d for d in self.lastdistmax[-self.bs_memory:]]))
 		else:
 			enlarge = self.enlarge
 
@@ -888,7 +888,7 @@ class HybridMLMultiEllipsoidConstrainer(object):
 				if Lmin is None or L > Lmin:
 					return u, x, L, ntoaccept
 				if 1. / ntoaccept < self.switchover_efficiency:
-					print 'low efficiency triggered switching over to MCMC'
+					print('low efficiency triggered switching over to MCMC')
 					self.use_direct_draw = False
 					break
 
@@ -925,6 +925,6 @@ class HybridMLMultiEllipsoidConstrainer(object):
 				self.update(live_pointsu)
 
 	def stats(self):
-		print 'HybridFriendsConstrainer: %s' % ('used direct draws throughout (no MCMC)' if self.use_direct_draw else 'switched over to MCMC')
+		print('HybridFriendsConstrainer: %s' % ('used direct draws throughout (no MCMC)' if self.use_direct_draw else 'switched over to MCMC'))
 		return self.mcmc_proposer.stats()
 

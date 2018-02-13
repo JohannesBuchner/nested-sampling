@@ -19,7 +19,7 @@ x = numpy.linspace(0, 1, N)
 y = numpy.linspace(0, 1, N)
 X, Y = numpy.meshgrid(x, y)
 L = loglikelihood(X, Y)
-print L.max(), L.shape
+print(L.max(), L.shape)
 Z = numpy.log(numpy.exp(L - L.max()).mean()) + L.max()
-print Z
+print(Z)
 

@@ -14,7 +14,7 @@ def test_bad_mcmc():
 	constrainer = MCMCConstrainer(proposer = GaussProposal(adapt=False, scale=1e-5), nmaxsteps=100000)
 	N = 40
 	for d in 2, 7, 20:
-		print 'running in %d dimensions' % d
+		print('running in %d dimensions' % d)
 		run_constrainer(d=d, N=N, constrainer=constrainer, name='rejection')
 		plt.savefig('test_constrainer_%d_%s.pdf' % (d, 'rejection'), bbox_inches='tight')
 		plt.close()
@@ -52,8 +52,8 @@ constrainers = [
 
 def run_constrainers(ds, Ns, constrainers):
 	fout = file('constrainertest.tex', 'w')
-	print ' %(name)30s  %(d)3s  %(N)3s     D  pvalue     D  pvalue   iter      evals   efficiency' % dict(name='constrainer', d='dim', N='N')
-	print ' %s  ---  ---  ----  ------  ----  ------  -----  ----------  -------------' % ('-'*30)
+	print(' %(name)30s  %(d)3s  %(N)3s     D  pvalue     D  pvalue   iter      evals   efficiency' % dict(name='constrainer', d='dim', N='N'))
+	print(' %s  ---  ---  ----  ------  ----  ------  -----  ----------  -------------' % ('-'*30))
 	for d in ds:
 		for name, constrainer in constrainers:
 			for N in Ns:
@@ -70,7 +70,7 @@ def test_rejection():
 	constrainer = RejectionConstrainer()
 	N = 40
 	for d in 2, 7, 20:
-		print 'running in %d dimensions' % d
+		print('running in %d dimensions' % d)
 		evaluate_constrainer(d=d, N=N, constrainer=constrainer, niter=400)
 		plt.savefig('test_constrainer_%d_%s.pdf' % (d, 'rejection'), bbox_inches='tight')
 		plt.close()

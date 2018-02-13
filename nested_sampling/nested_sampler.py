@@ -1,10 +1,10 @@
-from __future__ import print_function
 """
 Copyright: Johannes Buchner (C) 2013
 
 Modular, Pythonic Implementation of Nested Sampling
 """
 
+from __future__ import print_function
 import numpy
 from numpy import exp, log, log10, pi
 import progressbar

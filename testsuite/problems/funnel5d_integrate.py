@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy
 from numpy import log, exp, pi
 import sys
@@ -26,5 +27,5 @@ while True:
         for i in range(20):
         	vals = numpy.exp([Ls[j] for j in numpy.random.randint(0, len(Ls), size=len(Ls))])
                 means.append(numpy.log(vals.mean()))
-        print '%.5f BS: %.5f +- %.5f (%d x %d)' % (numpy.log(numpy.exp(Ls).mean()), numpy.mean(means), numpy.std(means), len(Ls), N)
+        print('%.5f BS: %.5f +- %.5f (%d x %d)' % (numpy.log(numpy.exp(Ls).mean()), numpy.mean(means), numpy.std(means), len(Ls), N))
 

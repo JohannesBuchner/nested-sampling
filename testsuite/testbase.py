@@ -1,7 +1,7 @@
-from __future__ import print_function
 #!/usr/bin/env python
 # 
 
+from __future__ import print_function
 import algorithms
 import problems
 import json
@@ -107,8 +107,8 @@ def create_counting_nonnan(function, problem_name='(unknown)'):
 	def counting_function(*args, **kwargs):
 		counting_function.calls += 1
 		if numpy.isnan(args).any(): 
-			print 'WARNING: in problem %s, function %s' % (problem_name, function)
-			print 'WARNING: algorithm suggested NaN parameters', args
+			print('WARNING: in problem %s, function %s' % (problem_name, function))
+			print('WARNING: algorithm suggested NaN parameters', args)
 			return -1e300
 		l = float(function(*args, **kwargs))
 		if numpy.isnan(l) or numpy.isinf(l):
@@ -214,16 +214,16 @@ def run_algorithm(p, a):
 def run_all():
 	# get problem
 	for i, p in enumerate(problems.problems):
-		print 
-		print p['problem_name']
-		print '=' * len(p['problem_name'])
+		print()
+		print(p['problem_name'])
+		print('=' * len(p['problem_name']))
 		# apply algorithm to it, 10 times with different seeds
 		algorithms_results = []
 		for j, a in enumerate(algorithms.algorithms):
-			print '%s (%d of %d)|%s (%d of %d)' % (
+			print('%s (%d of %d)|%s (%d of %d)' % (
 				p['problem_name'], i+1, len(problems.problems),
 				a['algorithm_name'], j+1, len(algorithms.algorithms)
-			)
+			))
 			algorithms_results.append(AlgorithmResult(a['algorithm_name'], run_algorithm(p, a)))
 		yield (p, algorithms_results)
 

@@ -54,8 +54,9 @@ for iresample in range(nresample):
 		cdf = numpy.copy(clusterdists)
 		cdf.sort()
 		# fit gaussian
-		def minfunc((mu, sigma)):
+		def minfunc(gaussparams):
 			# ks statistic, trimmed
+			(mu, sigma) = gaussparams
 			n = len(clusterdists)
 			p = numpy.linspace(0, 1, n)
 			cdf = scipy.stats.norm(mu, sigma).cdf(log10(clusterdists))
@@ -77,7 +78,7 @@ for iresample in range(nresample):
 		# what fraction are at low and high bounds
 		D, p = scipy.stats.kstest(clusterdists, rv.cdf)
 		params.append([D, p])
-		print D, p
+		print(D, p)
 		plt.ylabel('1 - D = %f' % (1 - D))
 		if D > 0.997 and False:
 			assigned = numpy.zeros(len(u))
@@ -99,7 +100,7 @@ for iresample in range(nresample):
 		for i in clusterids:
 			inside = assigned == i
 			chosen = u[inside]
-			plt.plot(chosen[:,0], chosen[:,1], 'x', color=colors.next())
+			plt.plot(chosen[:,0], chosen[:,1], 'x', color=next(colors))
 		plt.xlim(0, 1)
 		plt.ylim(0, 1)
 
@@ -111,7 +112,7 @@ params = numpy.array(params)
 
 colors = itertools.cycle('r,g,b,m,k,y,orange,grey'.split(','))
 for i in range(nresample):
-	plt.plot(params[i::nresample,0], params[i::nresample,1], 'x', color=colors.next())
+	plt.plot(params[i::nresample,0], params[i::nresample,1], 'x', color=next(colors))
 plt.savefig('x_shapes_norm.pdf', bbox_inches='tight')
 plt.close()
 

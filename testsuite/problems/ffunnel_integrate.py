@@ -24,7 +24,7 @@ for i, w in enumerate(numpy.linspace(0, 1, N)):
     if i % 100 == 0:
     	sys.stdout.write("\r%f " % log(numpy.mean(r) + 1e-10))
 sys.stdout.write((' '*40) +  '\r')
-print difficulty, ndim, log(numpy.mean(r))
+print(difficulty, ndim, log(numpy.mean(r)))
 
 # 0 2 -4.73259517967                                
 # 1 2 -3.24667664298                                

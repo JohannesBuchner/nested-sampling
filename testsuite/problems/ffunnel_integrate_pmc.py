@@ -35,7 +35,7 @@ for j in range(10):
 			break
 	if sigma > 0.5:
 		sigma = 0.5
-	print 'start at %f %f' % (start[0], sigma)
+	print('start at %f %f' % (start[0], sigma))
 	prop = LocalStudentT(0.002 * sigma, 1)
 	mc = pypmc.sampler.markov_chain.AdaptiveMarkovChain(log_target, prop, start)
 	mcs.append(mc)

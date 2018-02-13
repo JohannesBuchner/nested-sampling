@@ -15,7 +15,7 @@ def distance(x, y):
 def nearest_neighbor(x, points):
 	assert numpy.isfinite(x).all(), x
 	assert numpy.isfinite(points).all(), points
-	i, p = min(enumerate(points), key=lambda (i, y): distance(x, y))
+	i, p = min(enumerate(points), key=lambda i_y: distance(x, i_y[1]))
 	return i, p, distance(x, p)
 
 def nearest_neighbor(x, points):
@@ -183,11 +183,11 @@ def normalized_distance(d, points, rsize, uj, verbose=False):
 	# the prior constraint is at
 	# 0.5 +- (points[i] - 0.5)
 	# this region is of size:
-	if verbose: print 'rsize:', rsize
+	if verbose: print('rsize:', rsize)
 	rvol = vol(r=rsize*2, d=d)
-	if verbose: print 'rvol:', rvol
+	if verbose: print('rvol:', rvol)
 	scale = (rvol / 1) ** (1. / d)
-	if verbose: print 'scale:', scale
+	if verbose: print('scale:', scale)
 	assert scale > 0, (scale, rvol, rsize, points)
 	
 	# move all points so that new point is in the center (0.5^d)
@@ -213,9 +213,9 @@ def normalized_distance(d, points, rsize, uj, verbose=False):
 	center = numpy.zeros(d) + 0.5
 	
 	l, nearest, dist = nearest_neighbor(center, scaled_points)
-	if verbose: print 'nearest to', center, ':', l, nearest
+	if verbose: print('nearest to', center, ':', l, nearest)
 	#dist = distance(center, nearest)
-	if verbose: print 'distance', dist
+	if verbose: print('distance', dist)
 	return dist
 
 def shrinkage(d, rsize, rnewsize, verbose=False):
@@ -239,7 +239,7 @@ def priortransform(x): return x
 def loglikelihood(x):  return -numpy.abs(x-0.5).max()**0.01
 
 def collect_from_multinest_constrainer(d, N, seed, niter=10000, verbose=False):
-	print 'collecting', d, N, seed
+	print('collecting', d, N, seed)
 	sequence = numpy.loadtxt('mn_pyramid_%d_%d_%d_sequence' % (d, N, seed))
 	nested_samples = numpy.loadtxt('mn_pyramid_%d_%d_%d_.txt' % (d, N, seed))[:niter*10+2*N,:]
 	# one has Lmin, L, n, the other has weight, -2*L
@@ -300,8 +300,8 @@ def collect_from_multinest_constrainer(d, N, seed, niter=10000, verbose=False):
 	#for      560: [-0.99252442 -0.9900788   0.36895728  1.          0.59133446  0.69940084
 	#  0.17985809  0.73270625  0.6301567   0.13104272  0.28685457]
 	
-	print 'sequence shortened from %d to %d (%.3f%%) from %d samples' % (len(sequence), len(skip_sequence),
-		len(skip_sequence) * 100. / len(sequence), len(coordinates))
+	print('sequence shortened from %d to %d (%.3f%%) from %d samples' % (len(sequence), len(skip_sequence),
+		len(skip_sequence) * 100. / len(sequence), len(coordinates)))
 	assert len(coordinates) == len(skip_sequence)
 	assert niter + 2*N <= len(skip_sequence)
 	live_points = {}
@@ -340,10 +340,10 @@ def collect_from_multinest_constrainer(d, N, seed, niter=10000, verbose=False):
 		for p in live_points.values():
 			points += p
 		assert len(points) == N
-		if verbose and i < 40: print 'row:', len(points), Lmin, L, rsize, n, uj
+		if verbose and i < 40: print('row:', len(points), Lmin, L, rsize, n, uj)
 		
 		dist = normalized_distance(d, points, rsize, uj, verbose=verbose)
-		if verbose and i < 40: print 'distance:', dist, rsize, -((0.5 - rsize)**0.01)
+		if verbose and i < 40: print('distance:', dist, rsize, -((0.5 - rsize)**0.01))
 		# store distance
 		distances.append(dist)
 		
@@ -394,7 +394,7 @@ def sample_from_constrainer(d, N, constrainer, seed, niter=10000, verbose=False)
 	# use 400 points
 	points = list(numpy.random.uniform(size=(N, d)))
 	values = [loglikelihood(x) for x in points]
-	if verbose: print 'points:', zip(points, values)
+	if verbose: print('points:', list(zip(points, values)))
 	
 	distances = []
 	shrinkages = []
@@ -418,7 +418,7 @@ def sample_from_constrainer(d, N, constrainer, seed, niter=10000, verbose=False)
 			break
 		assert numpy.isfinite(Li), Li
 		assert numpy.isfinite(ui).all(), ui
-		if verbose: print 'calling draw_constrained with Lmin', Li, ui
+		if verbose: print('calling draw_constrained with Lmin', Li, ui)
 
 		uj, xj, Lj, n = constrainer.draw_constrained(
 			Lmin=Li, 
@@ -495,7 +495,7 @@ def run_constrainer(d, N, constrainer, name):
 		elif name == 'rejection':
 			niter = 4000
 		
-		print 'running', name
+		print('running', name)
 		if name == 'multinest':
 			results = evaluate_multinest_constrainer(d=d, N=N, niter=niter)
 		else:
@@ -506,7 +506,7 @@ def run_constrainer(d, N, constrainer, name):
 		plt.close()
 		results.update(dict(name=name, efficiency=results['niter'] * 100. / results['total_samples']))
 		json.dump(results, file(filename, 'w'), indent=4)
-	print '%(name)30s:  %(d)3d  %(N)3d  %(D).2f  %(pvalue).4f  %(shrinkage_D).2f  %(shrinkage_pvalue).4f %(niter)6d  %(total_samples)10d  %(efficiency).2f%%' % results
+	print('%(name)30s:  %(d)3d  %(N)3d  %(D).2f  %(pvalue).4f  %(shrinkage_D).2f  %(shrinkage_pvalue).4f %(niter)6d  %(total_samples)10d  %(efficiency).2f%%' % results)
 	return results
 
 

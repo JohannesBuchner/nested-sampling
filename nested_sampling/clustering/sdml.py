@@ -138,11 +138,11 @@ class MahalanobisMetric(object):
 		else:
 			# we have a singular matrix.
 			# use only scaling.
-			print 'singular matrix, switching to simple scaling...'
+			print('singular matrix, switching to simple scaling...')
 			scale = numpy.std(X, axis=0)
 			self.SQI = numpy.diag(1./scale)
 			self.SQ = numpy.diag(scale)
-		if self.verbose: print 'Mahalanobis metric:\n', self.cov
+		if self.verbose: print('Mahalanobis metric:\n', self.cov)
 	
 	def transform(self, x):
 		return numpy.dot(x - self.mean, self.SQI)
@@ -191,8 +191,8 @@ class TruncatedMahalanobisMetric(object):
 		self.scale = exp(logscale.astype(float))
 		X = X / self.scale / scalemax
 		cov = numpy.cov(X.transpose())
-		if self.verbose: print 'original cov', cov
-		if self.verbose: print 'invertible?', numpy.linalg.matrix_rank(cov) == len(cov)
+		if self.verbose: print('original cov', cov))
+		if self.verbose: print('invertible?', numpy.linalg.matrix_rank(cov) == len(cov))
 		"""
 		intcov = numpy.zeros(cov.shape, dtype=int)
 		signcov = numpy.ones(cov.shape, dtype=int)
@@ -210,21 +210,21 @@ class TruncatedMahalanobisMetric(object):
 		cov = trunccov
 		"""
 		cov, intcov, signcov = discretize_matrix(cov)
-		if self.verbose: print 'intcov:\n', intcov
+		if self.verbose: print('intcov:\n', intcov))
 		#for row in cov:
 		#	print row
-		if self.verbose: print 'invertible?', numpy.linalg.matrix_rank(cov) == len(cov)
+		if self.verbose: print('invertible?', numpy.linalg.matrix_rank(cov) == len(cov))
 		# ensure it is positive semi-definite
-		if self.verbose: print 'before polar', cov
+		if self.verbose: print('before polar', cov)
 		_, cov = scipy.linalg.polar(cov)
-		if self.verbose: print 'after polar', cov
+		if self.verbose: print('after polar', cov)
 		self.cov = cov
 		assert self.cov.shape == (ndim, ndim)
 		self.invcov = numpy.linalg.inv(self.cov)
 		self.SQI = scipy.linalg.sqrtm(self.invcov).real
 		self.SQ = scipy.linalg.sqrtm(self.cov).real
 		
-		if self.verbose: print 'Discretized Mahalanobis metric:\n', intcov, 'with scale', logscale
+		if self.verbose: print('Discretized Mahalanobis metric:\n', intcov, 'with scale', logscale)
 		wsamples = self.transform(samples)
 		samples2 = self.untransform(wsamples)
 		if not numpy.allclose(samples, samples2):
@@ -271,7 +271,7 @@ class SDML(object):
 		W: connectivity graph, (n x n)
 		+1 for positive pairs, -1 for negative.
 		'''
-		print 'SDML.fit ...', numpy.shape(X)
+		print('SDML.fit ...', numpy.shape(X))
 		self.mean_ = numpy.mean(X, axis=0)
 		X = numpy.matrix(X - self.mean_)
 		# set up prior M
@@ -308,7 +308,7 @@ class SDML(object):
 		#self.whiten_ = np.dot(np.dot(U, s_inv), U.T)
 		#self.dewhiten_ = np.dot(np.dot(U, s), U.T)
 		#print 'M:', M
-		print 'SDML.fit done'
+		print('SDML.fit done')
 		
 	def transform(self, x):
 		return np.dot(x - self.mean_, self.whiten_.T)
@@ -387,7 +387,7 @@ def test_generate_corr_sample(N, ndim, difficulty):
 	
 	# generate N points
 	from nestle import Ellipsoid
-	print 'generating from:', matrix #, invmatrix
+	print('generating from:', matrix) #, invmatrix
 	ell = Ellipsoid(mean, invmatrix)
 	samples = numpy.array([ell.sample() for i in range(N)])
 	return samples
@@ -402,23 +402,23 @@ if __name__ == '__main__':
 	#sfor ndim, difficulty in ('maha.npz', -1),:
 	#for ndim, difficulty in (3,4),:
 		if difficulty == -1:
-			print
-			print '======== TEST file=%s ==========' % (ndim)
-			print
+			print()
+			print('======== TEST file=%s ==========' % (ndim))
+			print()
 			data = numpy.load(ndim)
-			print data.keys()
+			print(list(data.keys()))
 			#samples = numpy.load(ndim)['X']
-			samples = numpy.load(ndim)[data.keys()[0]]
+			samples = numpy.load(ndim)[list(data.keys())[0]]
 		else:
-			print
-			print '======== TEST ndim=%d difficulty %d ==========' % (ndim, difficulty)
-			print
+			print()
+			print('======== TEST ndim=%d difficulty %d ==========' % (ndim, difficulty))
+			print()
 			samples = test_generate_corr_sample(N=N, ndim=ndim, difficulty=difficulty)
 		
 		#for metric in IdentityMetric(), SimpleScaling(), TruncatedScaling(), MahalanobisMetric(), TruncatedMahalanobisMetric(), SDML(), TruncatedSDML():
 		for metric in SDMLWrapper(),:
 		#for metric in TruncatedMahalanobisMetric(verbose=True),:
-			print 'testing metric %s' % type(metric)
+			print(('testing metric %s' % type(metric)))
 			metric.fit(samples)
 			wsamples = metric.transform(samples)
 			#assert wsamples.shape == samples.shape, (wsamples.shape, samples.shape)
@@ -431,7 +431,7 @@ if __name__ == '__main__':
 				plt.plot(samples[:,-2], samples[:,-1], 'x ', color='gray')
 				plt.plot(wsamples[:,-2], wsamples[:,-1], 'o ', color='r')
 				plt.plot(samples2[:,-2], samples2[:,-1], '+ ', color='k')
-				print 'showing plot...'
+				print('showing plot...')
 				plt.show()
 			
 			small_samples = samples / 10
@@ -441,7 +441,7 @@ if __name__ == '__main__':
 			samples2 = metric.untransform(wsamples)
 			#assert numpy.allclose(samples2, small_samples), (metric, small_samples, wsamples, samples2)
 	
-	print 'no assertion errors, so tests successful'
+	print('no assertion errors, so tests successful')
 	
 	
 	

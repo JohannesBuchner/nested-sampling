@@ -109,18 +109,18 @@ for i, algorithm_generator in list(enumerate(algorithms_generators)): #[::-1]:
 		marker = algorithm['marker']
 		lw = 2 if ls == '-' else 1
 		name = algorithm['algorithm_name']
-		print 'preparing...', name, 'against', problem['problem_name']
+		print('preparing...', name, 'against', problem['problem_name'])
 		result = testbase.run(problem, algorithm, seed=1)
 		if 'normal-bs' in name and result['Z_computed_err'] > 0.5:
 			# re-bootstrapping quotes too large errors
 			result['Z_computed_err'] = 0.5
-		print algorithm['algorithm_name'], result['neval'], result['Z_computed'], result['Z_computed_err']
+		print(algorithm['algorithm_name'], result['neval'], result['Z_computed'], result['Z_computed_err'])
 		true_value.append(problem['Z_analytic'])
 		nrepeats_selected.append(nrepeats)
 		results.append(result)
 		this_is_correct = abs(result['Z_computed'] - problem['Z_analytic']) < result['Z_computed_err']
 		if last_was_correct and this_is_correct:
-			print 'previous scaling and this scaling are correct, so we are done.'
+			print('previous scaling and this scaling are correct, so we are done.')
 			break
 		last_was_correct = this_is_correct
 	if len(nrepeats_selected) == 0:

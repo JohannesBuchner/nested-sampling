@@ -1,14 +1,14 @@
-from __future__ import print_function
 """
 Copyright: Johannes Buchner (C) 2013-2017
 
 Modular, Pythonic Implementation of Nested Sampling
 """
 
+from __future__ import print_function
 import numpy
 from numpy import exp, log, log10, pi
 import progressbar
-from adaptive_progress import AdaptiveETA
+from .adaptive_progress import AdaptiveETA
 from numpy import logaddexp
 
 
@@ -43,7 +43,7 @@ def nested_integrator(sampler, terminationcriterion, check_every=10,
 	pbar = progressbar.ProgressBar(widgets = widgets)
 	
 	i = 0
-	ui, xi, Li = sampler.next()
+	ui, xi, Li = next(sampler)
 	wi = logwidth + Li
 	logZ = wi
 	H = Li - logZ
@@ -87,7 +87,7 @@ def nested_integrator(sampler, terminationcriterion, check_every=10,
 		widgets[0] = '|%d/%d samples+%d/%d|lnZ = %.2f +- %.3f + %.3f|L=%.2f @ %s' % (
 			i + 1, pbar.maxval, sampler.nlive_points, sampler.ndraws, terminationcriterion.totalZ, logZerr, terminationcriterion.remainderZerr, Li,
 			numpy.array_str(xi, max_line_width=1000, precision=4))
-		ui, xi, Li = sampler.next()
+		ui, xi, Li = next(sampler)
 		wi = logwidth + Li
 		logZnew = logaddexp(logZ, wi)
 		H = exp(wi - logZnew) * Li + exp(logZ - logZnew) * (H + logZ) - logZnew

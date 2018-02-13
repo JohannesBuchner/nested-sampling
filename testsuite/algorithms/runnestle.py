@@ -1,6 +1,7 @@
 """
 Runs Nestle
 """
+from __future__ import print_function
 import itertools
 import nestle
 import numpy
@@ -33,8 +34,8 @@ def run_nestle(**config):
 		max_samples = None
 	else:
 		max_samples = 2000000
-	print
-	print 'running nestle ...'
+	print()
+	print('running nestle ...')
 	options = dict()
 	#if 'enlarge' in config:
 	#	options['enlarge'] = config['enlarge']
@@ -44,8 +45,8 @@ def run_nestle(**config):
 		**options)
 	endtime = time.time()
 	output_basename = config['output_basename']
-	print
-        print 'nestle done lnZ = %(logz).1f +- %(logzerr).1f' % (result)
+	print()
+        print('nestle done lnZ = %(logz).1f +- %(logzerr).1f' % (result))
 	
 	if config.get('seed', 0) == 0:
 		import matplotlib.pyplot as plt
@@ -103,7 +104,7 @@ configs = [
 		dict(method='multi-rememberingrobust'),
 	]
 ]
-configs = [dict([[k, v] for d in config for k, v in d.iteritems()]) for config in itertools.product(*configs)]
+configs = [dict([[k, v] for d in config for k, v in list(d.items())]) for config in itertools.product(*configs)]
 for c in configs:
 	c['algorithm_name'] = 'nestle-%s-nlive%d' % (c['method'], c['nlive_points'])
 	c['run'] = run_nestle

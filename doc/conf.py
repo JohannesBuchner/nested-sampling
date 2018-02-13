@@ -11,7 +11,7 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-from __future__ import absolute_import, unicode_literals, print_function
+
 import sys, os
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -218,7 +218,7 @@ file_insertion_enabled = True
 # (source start file, name, description, authors, manual section).
 man_pages = [
     ('index', 'nested_sampling', 'Nested Sampling Documentation',
-     [u'Johannes Buchner'], 1)
+     ['Johannes Buchner'], 1)
 ]
 
 # Example configuration for intersphinx: refer to the Python standard library.

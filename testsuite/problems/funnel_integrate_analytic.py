@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy
 from numpy import log, exp, pi
 import scipy.stats
@@ -27,5 +28,5 @@ for i, w in enumerate(numpy.linspace(0, 1, N)):
     part = float(b - a)
     r.append(part)
 for i in [2,3,5,10]:
-    print i, log(numpy.mean(numpy.array(r)**(i-1)))
+    print(i, log(numpy.mean(numpy.array(r)**(i-1))))
 

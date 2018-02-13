@@ -1,7 +1,7 @@
-from __future__ import print_function
 """
 Runs the MultiNest algorithm
 """
+from __future__ import print_function
 import pymultinest
 import json
 import itertools
@@ -97,7 +97,7 @@ configs = [
 		dict(importance_nested_sampling=True)
 	]
 ]
-configs = [dict([[k, v] for d in config for k, v in d.iteritems()]) for config in itertools.product(*configs)]
+configs = [dict([[k, v] for d in config for k, v in d.items()]) for config in itertools.product(*configs)]
 for c in configs:
 	c['algorithm_name'] = 'multinest-nlive%d%s' % (c['nlive_points'], '-INS' if c['importance_nested_sampling'] else '')
 	c['run'] = run_multinest

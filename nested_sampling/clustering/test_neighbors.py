@@ -35,22 +35,22 @@ def nearest_rdistance_guess(u, metric='euclidean'):
 
 if __name__ == '__main__':
 	for i in 1, 2, 3, 4, 5:
-		print '==== INPUT ===='
-		print 'SEED=%d' % i
+		print('==== INPUT ====')
+		print('SEED=%d' % i)
 		numpy.random.seed(i)
 		xx = numpy.random.uniform(size=(300, 2))
 		#xx[0,:] = 0.
-		print xx
-		print '==== PYTHON ===='
+		print(xx)
+		print('==== PYTHON ====')
 		rpy = nearest_rdistance_guess(xx)
-		print rpy
-		print '==== C ===='
+		print(rpy)
+		print('==== C ====')
 		rc = most_distant_nearest_neighbor(xx)
-		print rc
+		print(rc)
 		assert rc == rpy, (rc, rpy)
-	print 'speed test...'
+	print('speed test...')
 	xx = numpy.random.uniform(size=(30000, 2))
-	print most_distant_nearest_neighbor(xx)
-	print most_distant_nearest_neighbor(xx)
-	print most_distant_nearest_neighbor(xx)
+	print(most_distant_nearest_neighbor(xx))
+	print(most_distant_nearest_neighbor(xx))
+	print(most_distant_nearest_neighbor(xx))
 	

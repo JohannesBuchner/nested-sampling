@@ -102,7 +102,7 @@ results = nested_integrator(tolerance=0.5, sampler=sampler)
 
 usamples, xsamples = post.equal_weighted_posterior(results['weights'])
 
-u, x, L, width = zip(*results['weights'])
+u, x, L, width = list(zip(*results['weights']))
 x, y = numpy.array(x).T
 weight = numpy.add(L, width)
 #plt.plot(xsamples[:,0], xsamples[:,1], '.', color='green', alpha=0.1)

@@ -160,9 +160,9 @@ try:
 		return maxdistance
 
 except ImportError as e:
-	print 'Using slow, high-memory neighborhood function nearest_rdistance_guess because import failed:', e
+	print('Using slow, high-memory neighborhood function nearest_rdistance_guess because import failed:', e)
 except Exception as e:
-	print 'Using slow, high-memory neighborhood function nearest_rdistance_guess because:', e
+	print('Using slow, high-memory neighborhood function nearest_rdistance_guess because:', e)
 
 
 def nearest_rdistance_guess(u, metric='euclidean'):
@@ -203,7 +203,7 @@ def update_rdistance(u, ibootstrap, rdistance, verbose = False, metric='euclidea
 	assert distances.shape == (mask.sum(), (-mask).sum())
 	nearest_distance_to_members = distances.min(axis=0)
 	if verbose:
-		print 'nearest distances:', nearest_distance_to_members.max(), nearest_distance_to_members
+		print('nearest distances:', nearest_distance_to_members.max(), nearest_distance_to_members)
 	newrdistance = max(rdistance, nearest_distance_to_members.max())
 	if newrdistance > rdistance and verbose:
 		print(ibootstrap, 'extending:', newrdistance)

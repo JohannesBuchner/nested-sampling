@@ -1,3 +1,4 @@
+from __future__ import print_function
 from numpy import log, exp, pi
 import numpy
 import sys
@@ -18,7 +19,7 @@ ndim = int(sys.argv[2])
 def loglikelihood(x):
 	width = 10**(x[:,0].reshape(-1,1) * 20 - 10)
 	like = -0.5 * (((numpy.abs(x[:,1:] - 0.5) + 10**-difficulty)/width)**2 + log(2*pi * width**2)).sum()
-	print like.shape
+	print(like.shape)
 	outside_mask = ~numpy.logical_and(x > 0, x < 1).any(axis=1)
 	#if outside_mask.any():
 	#	like[outside_mask] = -numpy.inf

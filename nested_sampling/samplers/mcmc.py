@@ -166,7 +166,7 @@ class MCMCConstrainer(object):
 				# if no accepts at all, restart from scratch.
 				break
 			else:
-				print 'restarting failed chain...'
+				print('restarting failed chain...')
 		if Li < Lmin:
 			print()
 			print('ERROR: MCMCConstrainer could not find a point matching constraint!')
@@ -219,9 +219,9 @@ class SliceConstrainer(object):
 					break
 				assert n < self.nmaxsteps, n
 		if Li < Lmin:
-			print
-			print 'ERROR: HARMConstrainer could not find a point matching constraint!'
-			print 'ERROR: Proposer stats:',
+			print()
+			print('ERROR: HARMConstrainer could not find a point matching constraint!')
+			print('ERROR: Proposer stats:')
 			self.proposer.stats()
 			assert Li > Lmin, (Li, Lmin, self.nmaxsteps, numpy.mean(self.proposer.accepts), len(self.proposer.accepts))
 		return ui, xi, Li, n

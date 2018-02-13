@@ -73,7 +73,7 @@ try:
 		result = defaultdict(list)
 		for i in range(n):
 			result[clusters_array[i]].append(i)
-		return result.values()
+		return list(result.values())
 	
 except ImportError as e:
 	print 'Using slow, high-memory neighborhood function nearest_rdistance_guess because import failed:', e
@@ -170,7 +170,7 @@ if __name__ == '__main__':
 	x = numpy.random.uniform(size=(100, 5))
 	for number_of_neighbors in range(1, 5):
 		threshold_number_of_common_neighbors = 1
-		print 'JP clustering with ', number_of_neighbors, threshold_number_of_common_neighbors
+		print('JP clustering with ', number_of_neighbors, threshold_number_of_common_neighbors)
 		dists = scipy.spatial.distance.cdist(x, x, metric='euclidean')
 		result = jarvis_patrick_clustering(dists, number_of_neighbors, threshold_number_of_common_neighbors)
 		result2 = fast_jarvis_patrick_clustering(dists, number_of_neighbors, threshold_number_of_common_neighbors)

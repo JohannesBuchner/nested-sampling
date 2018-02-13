@@ -79,7 +79,7 @@ class FriendsConstrainer(object):
 				maxdistance = min(maxdistance, self.region['maxdistance'])
 			if self.keep_phantom_points and len(self.phantom_points) > 0:
 				# add phantoms to u now
-				print 'including phantom points in cluster members', self.phantom_points
+				print('including phantom points in cluster members', self.phantom_points)
 				u = numpy.vstack((u, self.phantom_points))
 			ulow  = numpy.max([u.min(axis=0) - maxdistance, numpy.zeros(ndim)], axis=0)
 			uhigh = numpy.min([u.max(axis=0) + maxdistance, numpy.ones(ndim)], axis=0)
@@ -309,27 +309,27 @@ class FriendsConstrainer(object):
 			uothers = [ui for i, ui in enumerate(live_pointsu) if i != starti]
 			if self.is_last_of_its_cluster(self.transform_point(ucurrent), self.transform_points(uothers)):
 				if self.optimize_phantom_points:
-					print 'optimizing phantom point', ucurrent
+					print('optimizing phantom point', ucurrent)
 					import scipy.optimize
 					def f(u):
 						if not self.is_inside(self.transform_point(u)):
 							return 1e100
 						x = priortransform(u)
 						L = loglikelihood(x)
-						if self.verbose: print 'OPT %.2f ' % L, u
+						if self.verbose: print('OPT %.2f ' % L, u)
 						return -L
 					r = scipy.optimize.fmin(f, ucurrent, ftol=0.5, full_output=True)
 					ubest = r[0]
 					Lbest = -r[1]
 					ntoaccept += r[3]
-					print 'optimization gave', r
+					print('optimization gave', r)
 					if not self.is_last_of_its_cluster(self.transform_point(ubest), self.transform_points(uothers)):
-						print 'that optimum is inside the other points, so no need to store'
+						print('that optimum is inside the other points, so no need to store')
 					else:
 						self.phantom_points.append(ubest)
 						self.phantom_points_Ls.append(Lbest)
 				else:
-					print 'remembering phantom point', ucurrent
+					print('remembering phantom point', ucurrent)
 					self.phantom_points.append(ucurrent)
 			
 			if self.optimize_phantom_points and len(self.phantom_points) > 0:
@@ -337,7 +337,7 @@ class FriendsConstrainer(object):
 				keep = [i for i, Lp in enumerate(self.phantom_points_Ls) if Lp > Lmin]
 				self.phantom_points = [self.phantom_points[i] for i in keep]
 				if len(keep) != len(self.phantom_points_Ls):
-					print 'purging some old phantom points. new:', self.phantom_points
+					print('purging some old phantom points. new:', self.phantom_points)
 				self.phantom_points_Ls = [self.phantom_points_Ls[i] for i in keep]
 		return ntoaccept, ntotalsum, rebuild
 

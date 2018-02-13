@@ -12,10 +12,10 @@ class ClusterResult(object):
 		self.clusters = clusters
 		self.metric = metric
 		if verbose:
-			print 'CLUSTERS:'
+			print('CLUSTERS:')
 			for cluster in clusters:
 				clusterpoints = metric.untransform(points[cluster,:])
-				print 'CLUSTER:', clusterpoints.mean(axis=0), clusterpoints.std(axis=0)
+				print('CLUSTER:', clusterpoints.mean(axis=0), clusterpoints.std(axis=0))
 	
 	def get_cluster_id(self, point):
 		w = self.metric.transform(point)
@@ -132,11 +132,11 @@ class RadFriendsRegion(object):
 			us = members[numpy.random.randint(0, len(members), N),:]
 			ntotal = ntotal + N
 			nall += N
-			if verbose: print 'chosen point', us
+			if verbose: print('chosen point', us)
 			# draw direction around it
 			direction = numpy.random.normal(0, 1, size=(N, ndim))
 			direction = direction / ((direction**2).sum(axis=1)**0.5).reshape((-1,1))
-			if verbose: print 'chosen direction', direction
+			if verbose: print('chosen direction', direction)
 			# choose radius: volume gets larger towards the outside
 			# so give the correct weight with dimensionality
 			radius = maxdistance * numpy.random.uniform(0, 1, size=(N,1))**(1./ndim)
@@ -149,14 +149,14 @@ class RadFriendsRegion(object):
 			#if verbose: print 'using point', us
 			# count the number of points this is close to
 			nnear = self.count_nearby_members(us)
-			if verbose: print 'near', nnear
+			if verbose: print('near', nnear)
 			# accept with probability 1./nnear
 			coin = numpy.random.uniform(size=len(us))
 			
 			accept = coin < 1. / nnear
 			#print 'accepted %d/%d [point draw]' % (accept.sum(), N)
 			if not accept.any():
-				if verbose: print 'probabilistic rejection due to overlaps'
+				if verbose: print('probabilistic rejection due to overlaps')
 				continue
 			#print '  overlaps accepted %d of %d, typically %.2f neighbours' % (accept.sum(), N, nnear.mean())
 			us = us[accept,:]
@@ -237,13 +237,13 @@ class MetricLearningFriendsConstrainer(object):
 		
 		metric_updated = False
 		clustermetric = self.metric
-		if self.verbose: print 'computing distances for clustering...'
+		if self.verbose: print('computing distances for clustering...')
 		wdists = scipy.spatial.distance.cdist(w, w, metric='euclidean')
 		# apply Jarvis-Patrick clustering
-		if self.verbose: print 'Clustering...'
+		if self.verbose: print('Clustering...')
 		clusters = jarvis_patrick_clustering_iterative(wdists, number_of_neighbors=len(wdists), n_stable_iterations=3)
 		# Overlay all clusters (shift by cluster mean) 
-		if self.verbose: print 'Metric update ...'
+		if self.verbose: print('Metric update ...')
 		shifted_cluster_members = []
 		for members in clusters:
 			cluster_mean = numpy.mean(u[members,:], axis=0)
@@ -292,7 +292,7 @@ class MetricLearningFriendsConstrainer(object):
 		#	shifted_cluster_members += (wnew[members,:] - cluster_mean).tolist()
 		#shifted_cluster_members = numpy.asarray(shifted_cluster_members)
 		#shifted_region = RadFriendsRegion(members=shifted_cluster_members)
-		if self.verbose: print 'Region update ...'
+		if self.verbose: print('Region update ...')
 		
 		self.region = RadFriendsRegion(members=wnew) #, maxdistance=shifted_region.maxdistance)
 		if not metric_updated and self.force_shrink and self.prev_maxdistance is not None:
@@ -310,7 +310,7 @@ class MetricLearningFriendsConstrainer(object):
 		#var = self.iter, self.metric, u, self.region.maxdistance
 		#assert self.is_inside(numpy.array([0.123456]*ndim)), var
 		#assert self.is_inside(numpy.array([0.654321]*ndim)), var
-		if self.verbose: print 'Metric+region update done.'
+		if self.verbose: print('Metric+region update done.')
 	
 	def are_inside_cluster(self, points):
 		w = self.metric.transform(points)
@@ -374,12 +374,12 @@ class MetricLearningFriendsConstrainer(object):
 		self.cluster(u=u, ndim=ndim, keepMetric=keepMetric)
 		self.last_cluster_points = u
 		if len(self.phantom_points) > 0:
-			print 'adding phantom points to radfriends:', self.phantom_points
+			print('adding phantom points to radfriends:', self.phantom_points)
 			self.region.add_members(self.metric.transform(self.phantom_points))
 			#self.region.members = numpy.vstack((self.region.members, 
 			#	self.metric.transform(self.phantom_points)))
 		# reset generator
-		if self.verbose: print 'maxdistance:', self.region.maxdistance
+		if self.verbose: print('maxdistance:', self.region.maxdistance)
 		self.generator = self.generate(ndim)
 	
 	def is_last_of_its_cluster(self, u, uothers):
@@ -423,31 +423,31 @@ class MetricLearningFriendsConstrainer(object):
 			phantom_points_added = False
 			if self.is_last_of_its_cluster(ucurrent, uothers):
 				if self.optimize_phantom_points:
-					print 'optimizing phantom point', ucurrent
-					import scipy.optimize
+					print('optimizing phantom point', ucurrent)
+					iport scipy.optimize
 					def f(u):
 						w = self.metric.transform(u)
 						if not self.region.is_inside(w):
 							return 1e100
 						x = priortransform(u)
 						L = loglikelihood(x)
-						if self.verbose: print 'OPT %.2f ' % L, u
+						if self.verbose: print('OPT %.2f ' % L, u)
 						return -L
 					r = scipy.optimize.fmin(f, ucurrent, ftol=0.5, full_output=True)
 					ubest = r[0]
 					Lbest = -r[1]
 					ntoaccept += r[3]
-					print 'optimization gave', r
+					print('optimization gave', r)
 					wbest = self.metric.transform(ubest)
 					if not self.is_last_of_its_cluster(ubest, uothers):
-						print 'that optimum is inside the other points, so no need to store'
+						print('that optimum is inside the other points, so no need to store')
 					else:
-						print 'remembering phantom point', ubest, Lbest
+						print('remembering phantom point', ubest, Lbest)
 						self.phantom_points.append(ubest)
 						self.phantom_points_Ls.append(Lbest)
 						phantom_points_added = True
 				else:
-					print 'remembering phantom point', ucurrent
+					print('remembering phantom point', ucurrent)
 					self.phantom_points.append(ucurrent)
 					phantom_points_added = True
 			
@@ -461,7 +461,7 @@ class MetricLearningFriendsConstrainer(object):
 				keep = [i for i, Lp in enumerate(self.phantom_points_Ls) if Lp > Lmin]
 				self.phantom_points = [self.phantom_points[i] for i in keep]
 				if len(keep) != len(self.phantom_points_Ls):
-					print 'purging some old phantom points. new:', self.phantom_points, Lmin
+					print('purging some old phantom points. new:', self.phantom_points, Lmin)
 					self.rebuild(numpy.asarray(live_pointsu), ndim, keepMetric=False)
 					rebuild = True
 					
@@ -497,23 +497,23 @@ class MetricLearningFriendsConstrainer(object):
 				#     if we haven't done so at the start
 				if not rebuild and ntoaccept > 400:
 					rebuild = True
-					print 'low efficiency is triggering RadFriends rebuild'
+					print('low efficiency is triggering RadFriends rebuild')
 					self.rebuild(numpy.asarray(live_pointsu), ndim, keepMetric=True)
 					rebuild_triggered = True
 					break
 				if not rebuild_metric and ntoaccept > 2000:
 					rebuild_metric = True
-					print 'low efficiency is triggering metric rebuild'
+					print('low efficiency is triggering metric rebuild')
 					self.rebuild(numpy.asarray(live_pointsu), ndim, keepMetric=False)
 					rebuild_triggered = True
 					break
 			
-			print 'generator complete. %d %d %d' % (rebuild, rebuild_metric, rebuild_triggered)
+			print('generator complete. %d %d %d' % (rebuild, rebuild_metric, rebuild_triggered))
 			if not rebuild_triggered and not rebuild_metric:
 				#raise Exception('RadFriends is not drawing efficiently for this problem. Use RadFriends in combination with MCMC.')
 				rebuild = True
 				rebuild_metric = True
-				print 'low radfriends drawing efficiency is triggering metric rebuild'
+				print('low radfriends drawing efficiency is triggering metric rebuild')
 				self.direct_draws_efficient = False
 				self.rebuild(numpy.asarray(live_pointsu), ndim, keepMetric=False)
 			else:

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy
 from numpy import log, exp, pi
 import sys
@@ -22,8 +23,8 @@ for i, w in enumerate(numpy.linspace(0, 1, N)):
     #print L.max(), L.shape
     r.append(numpy.trapz(numpy.exp(L))/len(x))
     if i % 100 == 0:
-    	print "%f " % log(numpy.mean(r) + 1e-10)
-print log(numpy.mean(r))
+    	print("%f " % log(numpy.mean(r) + 1e-10)))
+print((log(numpy.mean(r)))
 #Z = numpy.log(numpy.exp(L - L.max()).mean()) + L.max()
 #print Z
 

@@ -1,11 +1,11 @@
-from __future__ import print_function
+
 """
 Problems known to man
 """
-import gauss
-import loggamma
-#import real.timeseries
-import real.bexvar
+from __future__ import print_function
+from . import gauss
+from . import loggamma
+from .real import bexvar
 
 problems = [
 	#gauss.create_problem_gauss(ndim=1, problem_name='gauss1d'),
@@ -54,7 +54,7 @@ problems = [
 	loggamma.create_problem_ffunnel(ndim=10, problem_name='ffunnel10d-3', difficulty=3),
 	loggamma.create_problem_ffunnel(ndim=10, problem_name='ffunnel10d-5', difficulty=5),
 	#real.exvar.create_problem_exvar(ndim=5, problem_name='exvar5d'),
-	real.bexvar.create_problem_bexvar(ndim=10, problem_name='bexvar10d', variance=1),
+	bexvar.create_problem_bexvar(ndim=10, problem_name='bexvar10d', variance=1),
 	#real.bexvar.create_problem_bexvar(ndim=10, problem_name='bexvar10d-1', variance=-1),
 	#real.exvar.create_problem_exvar(ndim=20, problem_name='exvar20d'),
 	#loggamma.create_problem_ffunnel(ndim=20, problem_name='ffunnel20d', difficulty=5),

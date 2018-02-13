@@ -150,7 +150,7 @@ class DiffusiveSampler(object):
 				self.keep.sort()
 				ii = int((1. - 1. / self.compression) * len(self.keep))
 				cutoff = self.keep[ii]
-				print "# Creating level %d with logL = %.2f." % (len(self.levels), cutoff)
+				print("# Creating level %d with logL = %.2f." % (len(self.levels), cutoff))
 				self.levels.append(Level(self.levels[-1].logX - 1., cutoff))
 				if self.levelsComplete():
 					self.keep = []
@@ -161,7 +161,7 @@ class DiffusiveSampler(object):
 				recalculateLogX(self.levels, self.compression, 100)
 				self.deleteParticle()
 		
-		print ''.join(['*' if (self.indices == i).any() else ' ' for i in range(len(self.levels))])
+		print(''.join(['*' if (self.indices == i).any() else ' ' for i in range(len(self.levels))]))
 		
 		sample = self.live_pointsu[which]
 		sampleInfo = self.indices[which], self.live_pointsL[which], numpy.random.uniform(), which
@@ -192,7 +192,7 @@ class DiffusiveSampler(object):
 			self.live_pointsu[i], self.live_pointsx[i], self.live_pointsL[i] = \
 				self.live_pointsu[copy], self.live_pointsx[copy], self.live_pointsL[copy]
 			self.indices[i] = self.indices[copy]
-			print "# Deleting a particle. Replacing it with a copy of a good survivor."
+			print("# Deleting a particle. Replacing it with a copy of a good survivor.")
 		
 	def updateParticle(self, which):
 		"""
@@ -310,7 +310,7 @@ class DiffusiveSampler(object):
 			f.write("# Samples file. One sample per line.\n")
 			numpy.savetxt(f, levels, fmt='%e %e %f %d %d %d %d')
 		
-	def next(self):
+	def __next__(self):
 		return self.__next__()
 	def __iter__(self):
 		while True: yield self.__next__()
@@ -356,7 +356,7 @@ def diffusive_integrator(sampler, tolerance = 0.01, maxEvaluations=0, minEvaluat
 	nlevelcomplete = None
 	while True:
 		# keep sampling
-		sample, sampleInfo = sampler.next()
+		sample, sampleInfo = next(sampler)
 		#print 'new sample:', sample, sampleInfo
 
 		# each sample file contains one line per live point / particle
@@ -386,13 +386,13 @@ def diffusive_integrator(sampler, tolerance = 0.01, maxEvaluations=0, minEvaluat
 				save=False, plot=False, verbose=False,
 				numResampleLogX=10)
 			logZs.append(logZ)
-			print 'logZ = %.3f +- %.3f +- %.3f | %.1f samples | iteration %d[warmup:%s,neval:%d]' % (logZ, logZerr, numpy.std(logZs[-10:]), ESS, i, nlevelcomplete, sampler.neval)
+			print('logZ = %.3f +- %.3f +- %.3f | %.1f samples | iteration %d[warmup:%s,neval:%d]' % (logZ, logZerr, numpy.std(logZs[-10:]), ESS, i, nlevelcomplete, sampler.neval))
 			
 			if nlevelcomplete is None and ESS > 60 and sampler.maxLevels <= 0:
 				sampler.maxLevels = len(sampler.levels)
 			if nlevelcomplete is None and sampler.levelsComplete():
 				nlevelcomplete = i
-				print '# levels sufficient after %d iterations' % nlevelcomplete
+				print('# levels sufficient after %d iterations' % nlevelcomplete)
 			
 			logZerr_total = (logZerr**2 + numpy.var(logZs[-10:]))**0.5
 			converged = nlevelcomplete is not None and logZerr_total < tolerance and numpy.std(logZs[-10:]) * 10 < tolerance
@@ -426,12 +426,12 @@ if __name__ == '__main__':
 
 	constrainer = mcmc_draw
 
-	print 'preparing sampler'
+	print('preparing sampler')
 	sampler = DiffusiveSampler(nlive_points = 5,
 		priortransform=priortransform, loglikelihood=loglikelihood, 
 		draw_constrained = constrainer, ndim=ndim,
 		maxLevels=0)
-	print 'running sampler'
+	print('running sampler')
 	result = diffusive_integrator(tolerance=0.5, sampler=sampler, maxEvaluations=2000000)
 	
 	i = numpy.argmax([x + L for p, x, L in result['points']])
