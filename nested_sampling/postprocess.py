@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy
 from numpy import exp, log, log10
 from operator import getitem, attrgetter

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy
 from numpy import exp, log, log10
 from operator import getitem, attrgetter
@@ -162,11 +163,11 @@ if __name__ == '__main__':
 	weight = data[:,-1]
 	weights = list(zip(params, params, L, weight))
 	
-	print 'creating posterior samples...'
+	print('creating posterior samples...')
 	_, post_samples = equal_weighted_posterior(weights)
 	numpy.savetxt(prefix + 'posterior_samples.txt', post_samples)
 	
-	print 'creating marginal plots...'
+	print('creating marginal plots...')
 	#if nparams > 10:
 	plt.figure(figsize=(2+nparams, 2+nparams))
 	marginal_plots(weights, nparams)
@@ -175,11 +176,11 @@ if __name__ == '__main__':
 	
 	modes = mode_importance(weights)
 	for mode in modes:
-		print
-		print 'Mode'
-		print '  Mean:', mode['mean']
-		print '  Stdev:', mode['stdev']
-		print '  importance:', mode['relative_posterior_probability']
+		print()
+		print('Mode')
+		print('  Mean:', mode['mean'])
+		print('  Stdev:', mode['stdev'])
+		print('  importance:', mode['relative_posterior_probability'])
 	
 
 

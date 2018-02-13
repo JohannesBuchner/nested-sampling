@@ -1,3 +1,4 @@
+from __future__ import print_function
 import scipy, scipy.stats, scipy.cluster
 import numpy
 from numpy import exp, log, log10
@@ -32,17 +33,17 @@ def cut_cluster(cluster, distances, threshold, minsize=30, verbose=1):
 			isparent[b] = False
 		else:  # we are too far away to claim parent
 			isparent[i] = False
-			print '    splitting with %d, %d children' % (cluster[a - n][3] if a >= n else 1, cluster[b - n][3] if a >= n else 1)
+			print('    splitting with %d, %d children' % (cluster[a - n][3] if a >= n else 1, cluster[b - n][3] if a >= n else 1))
 	# go through parents
 	if verbose > 0 and isparent.sum() > 1:
-		print 'cut at %.2f found %d clusters' % (threshold, isparent.sum())
+		print('cut at %.2f found %d clusters' % (threshold, isparent.sum()))
 	ids = set(numpy.arange(n*2 - 1)[isparent])
 	if verbose > 1:
-		print '  parents:', ids
+		print('  parents:', ids)
 		for i, (a, b, dist, entries) in tree.iteritems():
 			if i in ids or a in ids or b in ids:
-				print '    %3d: %3d%s %3d%s %.2f %3d' % (i, a, 
-					'*' if a < n else ' ', b, '*' if b < n else ' ', dist, entries)
+				print('    %3d: %3d%s %3d%s %.2f %3d' % (i, a, 
+					'*' if a < n else ' ', b, '*' if b < n else ' ', dist, entries))
 	assigned = numpy.zeros(n) - 1
 	for i, c in enumerate(ids):
 		if c not in tree:

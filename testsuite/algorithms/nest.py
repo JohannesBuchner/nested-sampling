@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 Runs Python-implemented Nested Sampling algorithms from this package.
 """
@@ -33,7 +34,7 @@ def run_nested(**config):
 	if 'seed' in config:
 		numpy.random.seed(config['seed'])
 
-	print 'Configuring for %s, with seed=%s ...' % (config.get('output_basename'), config.get('seed'))
+	print('Configuring for %s, with seed=%s ...' % (config.get('output_basename'), config.get('seed')))
 	# can use these directly
 	loglikelihood = config['loglikelihood']
 	nlive_points = config['nlive_points']
@@ -199,7 +200,7 @@ def run_nested(**config):
 	else:
 		raise NotImplementedError('draw_method "%s" not implemented' % method)
 
-	print 'configuring TerminationCriterion'
+	print('configuring TerminationCriterion')
 	if config.get('unlimited_sampling', False):
 		max_samples = None
 	else:
@@ -253,7 +254,7 @@ def run_nested(**config):
 	# only record for the first seed
 	termination.plot = config.get('seed', 0) == 0
 	
-	print 'configuring NestedSampler'
+	print('configuring NestedSampler')
 	starttime = time.time()
 	if hasattr(constrainer, 'get_Lmax'):
 		constrainer_get_Lmax = constrainer.get_Lmax
@@ -264,7 +265,7 @@ def run_nested(**config):
 		draw_constrained = constrainer.draw_constrained, ndim=ndim,
 		constrainer_get_Lmax = constrainer_get_Lmax)
 	constrainer.sampler = sampler
-	print 'running nested_integrator to tolerance 0.5'
+	print('running nested_integrator to tolerance 0.5')
 	result = nested_integrator(sampler=sampler, max_samples=max_samples, terminationcriterion=termination)
 
 	endtime = time.time()
@@ -284,7 +285,7 @@ def run_nested(**config):
 		plt.close()
 		
 		# L vs V
-		print 'plotting V-L...'
+		print('plotting V-L...')
 		L = numpy.array([L for _, _, L, _ in result['weights']])
 		width = numpy.array([w for _, _, _, w in result['weights']])
 		plt.plot(width, L, 'x-', color='blue', ms=1, label='Z=%.2f (%.2f)' % (
@@ -303,7 +304,7 @@ def run_nested(**config):
 		plt.close()
 		
 		# posteriors
-		print 'plotting posteriors...'
+		print('plotting posteriors...')
 		posterioru, posteriorx = equal_weighted_posterior(result['weights'])
 		plt.figure(figsize=(ndim*2, ndim*2))
 		marginal_plots(weights=result['weights'], ndim=ndim)
@@ -311,7 +312,7 @@ def run_nested(**config):
 		plt.close()
 		
 		# plot convergence history
-		print 'plotting Z history...'
+		print('plotting Z history...')
 		plt.figure()
 		plt.plot(termination.plotdata['normalZ'], label='NS')
 		plt.plot(termination.plotdata['remainderZ'], label='remainder')

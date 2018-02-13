@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 Runs the Cuba algorithms: Vegas, Suave, Divonne, Cuhre
 """

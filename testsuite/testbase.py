@@ -1,3 +1,4 @@
+from __future__ import print_function
 #!/usr/bin/env python
 # 
 
@@ -112,8 +113,8 @@ def create_counting_nonnan(function, problem_name='(unknown)'):
 		l = float(function(*args, **kwargs))
 		if numpy.isnan(l) or numpy.isinf(l):
 			import sys
-			print 'FATAL ERROR: in problem %s, function %s' % (problem_name, function)
-			print 'FATAL ERROR: invalid likelihood return value at', args, l
+			print('FATAL ERROR: in problem %s, function %s' % (problem_name, function))
+			print('FATAL ERROR: invalid likelihood return value at', args, l)
 			sys.exit(-1)
 		return l
 	counting_function.calls = 0

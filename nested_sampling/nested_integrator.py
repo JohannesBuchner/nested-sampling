@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 Copyright: Johannes Buchner (C) 2013-2017
 
@@ -70,17 +71,17 @@ def nested_integrator(sampler, terminationcriterion, check_every=10,
 			total_error = terminationcriterion.totalZerr
 			if max_samples is not None and int(max_samples) < int(sampler.ndraws):
 				pbar.finish()
-				print 'maximum number of samples reached'
+				print('maximum number of samples reached')
 				break
 			if terminationcriterion.converged:
 				pbar.finish()
-				print 'tolerance on error reached: total=%.4f stat=%.4f remainder=%.4f' % (terminationcriterion.totalZerr, terminationcriterion.normalZerr, terminationcriterion.remainderZerr)
+				print('tolerance on error reached: total=%.4f stat=%.4f remainder=%.4f' % (terminationcriterion.totalZerr, terminationcriterion.normalZerr, terminationcriterion.remainderZerr))
 				break
 			# we want to make maxContribution as small as possible
 			#   but if it becomes 10% of logZerr, that is enough
 			if terminationcriterion.remainderZerr < logZerr / 10.:
 				pbar.finish()
-				print 'tolerance will not improve: remainder error (%.3f) is much smaller than systematic errors (%.3f)' % (terminationcriterion.remainderZerr, logZerr)
+				print('tolerance will not improve: remainder error (%.3f) is much smaller than systematic errors (%.3f)' % (terminationcriterion.remainderZerr, logZerr))
 				break
 		
 		widgets[0] = '|%d/%d samples+%d/%d|lnZ = %.2f +- %.3f + %.3f|L=%.2f @ %s' % (

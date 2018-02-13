@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 
 Generates data for the light house problem

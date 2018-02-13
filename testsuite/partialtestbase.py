@@ -1,3 +1,4 @@
+from __future__ import print_function
 import testbase
 import problems, algorithms
 import re
@@ -22,21 +23,21 @@ def run_partial():
 	# get problem
 	for i, p in enumerate(problems.problems):
 		if problem_filter.match(p['problem_name']):
-			print 'skipping', p['problem_name']
+			print( 'skipping', p['problem_name'])
 			continue
-		print 
-		print p['problem_name']
-		print '=' * len(p['problem_name'])
+		print() 
+		print(p['problem_name'])
+		print('=' * len(p['problem_name']))
 		# apply algorithm to it, 10 times with different seeds
 		algorithms_results = []
 		for j, a in enumerate(algorithms.algorithms):
 			if algorithm_filter.match(a['algorithm_name']):
 				print 'skipping', a['algorithm_name']
 				continue
-			print '%s (%d of %d)|%s (%d of %d)' % (
+			print('%s (%d of %d)|%s (%d of %d)' % (
 				p['problem_name'], i+1, len(problems.problems),
 				a['algorithm_name'], j+1, len(algorithms.algorithms)
-			)
+			))
 			algorithms_results.append(testbase.AlgorithmResult(a['algorithm_name'], testbase.run_algorithm(p, a)))
 		yield (p, algorithms_results)
 
