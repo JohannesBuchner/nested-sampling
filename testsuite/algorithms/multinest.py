@@ -15,8 +15,8 @@ def run_multinest(**config):
 	n_params = config['ndim']
 	output_basename = config['output_basename']
 	# we use a flat prior
-        def myprior(cube, ndim, nparams):
-                pass
+	def myprior(cube, ndim, nparams):
+		pass
 	loglikelihood = config['loglikelihood']	
 	def myloglike(cube, ndim, nparams):
 		try:
@@ -85,7 +85,7 @@ def run_multinest(**config):
 			print('deleting %s' % f)
 			os.remove(f)
 	
-        return results
+	return results
 
 configs = [
 	[

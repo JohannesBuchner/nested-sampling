@@ -64,7 +64,7 @@ try:
 	def fast_jarvis_patrick_clustering(dists, number_of_neighbors, threshold_number_of_common_neighbors):
 		n = len(dists)
 		clusters = list(range(n))
-        	clusters_array = (c_int * n)(*clusters)
+		clusters_array = (c_int * n)(*clusters)
 		r = lib.jarvis_patrick_clustering(dists, n, 
 			number_of_neighbors, threshold_number_of_common_neighbors, 
 			clusters_array)
@@ -76,9 +76,9 @@ try:
 		return list(result.values())
 	
 except ImportError as e:
-	print 'Using slow, high-memory neighborhood function nearest_rdistance_guess because import failed:', e
+	print('Using slow, high-memory neighborhood function nearest_rdistance_guess because import failed:', e)
 except Exception as e:
-	print 'Using slow, high-memory neighborhood function nearest_rdistance_guess because:', e
+	print('Using slow, high-memory neighborhood function nearest_rdistance_guess because:', e)
 
 def jarvis_patrick_clustering(dists, number_of_neighbors, threshold_number_of_common_neighbors):
 	"""

@@ -46,7 +46,7 @@ def run_nestle(**config):
 	endtime = time.time()
 	output_basename = config['output_basename']
 	print()
-        print('nestle done lnZ = %(logz).1f +- %(logzerr).1f' % (result))
+	print('nestle done lnZ = %(logz).1f +- %(logzerr).1f' % (result))
 	
 	if config.get('seed', 0) == 0:
 		import matplotlib.pyplot as plt

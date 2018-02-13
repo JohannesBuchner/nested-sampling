@@ -66,9 +66,9 @@ def run_cuba(**config):
 			ldxgiven=LDXGIVEN, verbose=2, **commonargs)
 	elif config['cuba_algorithm'] == 'Cuhre':
 		results = pycuba.Cuhre(Integrand, NDIM, key=KEY, verbose=2 | 4, **commonargs)
-  	else:
-  		assert False, 'Unknown cuba algorithm "%s"!' % config['cuba_algorithm']
-  	duration = time.time() - starttime
+	else:
+		assert False, 'Unknown cuba algorithm "%s"!' % config['cuba_algorithm']
+	duration = time.time() - starttime
 	print_results(config['cuba_algorithm'], results)
 	Z = results['results'][0]['integral']
 	Zerr = results['results'][0]['error']

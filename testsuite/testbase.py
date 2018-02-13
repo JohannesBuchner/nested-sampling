@@ -81,18 +81,18 @@ class AlgorithmResult(object):
 		# no significant difference!
 		#print 'no significant difference', namea, nameb
 		return 0
-        def __lt__(self, other):
-        	return self.__cmp__(other) < 0
-        def __gt__(self, other):
-        	return self.__cmp__(other) > 0
-        def __eq__(self, other):
-        	return self.__cmp__(other) == 0
-        def __le__(self, other):
-        	return self.__cmp__(other) <= 0
-        def __ge__(self, other):
-        	return self.__cmp__(other) >= 0
-        def __ne__(self, other):
-        	return self.__cmp__(other) != 0
+	def __lt__(self, other):
+		return self.__cmp__(other) < 0
+	def __gt__(self, other):
+		return self.__cmp__(other) > 0
+	def __eq__(self, other):
+		return self.__cmp__(other) == 0
+	def __le__(self, other):
+		return self.__cmp__(other) <= 0
+	def __ge__(self, other):
+		return self.__cmp__(other) >= 0
+	def __ne__(self, other):
+		return self.__cmp__(other) != 0
 
 def mkdir(p):
 	try:

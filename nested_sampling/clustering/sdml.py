@@ -191,7 +191,7 @@ class TruncatedMahalanobisMetric(object):
 		self.scale = exp(logscale.astype(float))
 		X = X / self.scale / scalemax
 		cov = numpy.cov(X.transpose())
-		if self.verbose: print('original cov', cov))
+		if self.verbose: print('original cov', cov)
 		if self.verbose: print('invertible?', numpy.linalg.matrix_rank(cov) == len(cov))
 		"""
 		intcov = numpy.zeros(cov.shape, dtype=int)
@@ -210,7 +210,7 @@ class TruncatedMahalanobisMetric(object):
 		cov = trunccov
 		"""
 		cov, intcov, signcov = discretize_matrix(cov)
-		if self.verbose: print('intcov:\n', intcov))
+		if self.verbose: print('intcov:\n', intcov)
 		#for row in cov:
 		#	print row
 		if self.verbose: print('invertible?', numpy.linalg.matrix_rank(cov) == len(cov))

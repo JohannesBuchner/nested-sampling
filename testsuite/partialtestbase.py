@@ -32,7 +32,7 @@ def run_partial():
 		algorithms_results = []
 		for j, a in enumerate(algorithms.algorithms):
 			if algorithm_filter.match(a['algorithm_name']):
-				print 'skipping', a['algorithm_name']
+				print('skipping', a['algorithm_name'])
 				continue
 			print('%s (%d of %d)|%s (%d of %d)' % (
 				p['problem_name'], i+1, len(problems.problems),

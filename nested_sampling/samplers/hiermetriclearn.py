@@ -424,7 +424,7 @@ class MetricLearningFriendsConstrainer(object):
 			if self.is_last_of_its_cluster(ucurrent, uothers):
 				if self.optimize_phantom_points:
 					print('optimizing phantom point', ucurrent)
-					iport scipy.optimize
+					import scipy.optimize
 					def f(u):
 						w = self.metric.transform(u)
 						if not self.region.is_inside(w):

@@ -251,8 +251,8 @@ def create_problem_funnel(**config):
 	ndim = config.get('ndim', 2)
 	difficulty = config.get('difficulty', 3)
 	assert ndim >= 2, ('ndim must be at least 2')
-        #xobs = numpy.array([0.499,0.501]*100)[1:ndim]
-        xobs = numpy.array([0.5-10**-difficulty,0.5+10**-difficulty]*100)[1:ndim]
+	#xobs = numpy.array([0.499,0.501]*100)[1:ndim]
+	xobs = numpy.array([0.5-10**-difficulty,0.5+10**-difficulty]*100)[1:ndim]
 	
 	def loglikelihood(x):
 		x = numpy.asarray(x)
@@ -283,41 +283,41 @@ def create_problem_funnel(**config):
 		(2,3):-0.69567,(5,3):-2.43, (10,3):-3.4,
 		(3,0):-6.260,(3,1):-1.62,
 		(4,0):-7.9077,(4,1):-2.0,
-        }.get((ndim,difficulty), 0)
+	}.get((ndim,difficulty), 0)
 	config['loglikelihood'] = loglikelihood
 	config['Z_analytic'] = Z_analytic
 	config['description'] = """A gaussian with mean 0.5, stdev first parameter.
 	In %d dimensions. Unimodal and peculariar shape, heavy contributions off-maximum.
 	<p>TODO: the analytic value has not been verified for ndim>2
-        </p>
-        <!--
-        <p>Monte carlo integration for ndim=2: 
-        difficulty=0 gives -4.4289 with 300,000,000 MC samples. Fine grid 100,000x100,000 gives -4.428872. Analytic: -4.42896
-        difficulty=1 gives -1.1 first, but then goes up to -0.6..-0.4 with 1,000,000,000 MC samples. Fine grid with 10,000x10,000 gives -1.474, from 0.5..1 gives -0.51760, with trapz: -0.5176, analytic: -0.69655
-        difficulty=2 gives -1 first, then -0.6+-0.25 with 2000,000,000, Fine grid with 10,000x100,000 gives 0.422175, with trapz: 0.422171, analytic: -0.695676
-        difficulty=3 gives -0.9 first, 0.735+-0.01 with 13000,000,000, Fine grid with 10,000x100,000 gives 2.420035, 2.420030, analytic: -0.69567
+	</p>
+	<!--
+	<p>Monte carlo integration for ndim=2: 
+	difficulty=0 gives -4.4289 with 300,000,000 MC samples. Fine grid 100,000x100,000 gives -4.428872. Analytic: -4.42896
+	difficulty=1 gives -1.1 first, but then goes up to -0.6..-0.4 with 1,000,000,000 MC samples. Fine grid with 10,000x10,000 gives -1.474, from 0.5..1 gives -0.51760, with trapz: -0.5176, analytic: -0.69655
+	difficulty=2 gives -1 first, then -0.6+-0.25 with 2000,000,000, Fine grid with 10,000x100,000 gives 0.422175, with trapz: 0.422171, analytic: -0.695676
+	difficulty=3 gives -0.9 first, 0.735+-0.01 with 13000,000,000, Fine grid with 10,000x100,000 gives 2.420035, 2.420030, analytic: -0.69567
 
-        ndim=3:
-        difficulty=0 gives -6.26047 with 100,000,000 MC samples.
-        difficulty=1 gives -1.7 first -1.62 with 1000,000,000 MC samples.
-        
-        ndim=4:
-        difficulty=0 gives -7.9077 with 100,000,000 MC samples.
-        difficulty=1 gives -2+-0.05 with 1000,000,000 MC samples.
-        
-        ndim=5:
-        difficulty=0 gives -9.48 with 300,000,000 MC samples.
-        difficulty=1 gives -2.1+-0.2 with 1000,000,000 MC samples.
-        difficulty=2 gives -2.3 with 200,000,000 MC samples.
-        difficulty=3 gives -2.43 with 1000,000,000 MC samples.
-        
-        ndim=10:
-        difficulty=0 gives -17        with 100,000,000 MC samples.
-        difficulty=1 gives -3.1+-0.1  with 500,000,000 MC samples.
-        difficulty=2 gives -3.37+-0.1 with 350,000,000 MC samples.
-        difficulty=3 gives -3.40+-0.05 with 250,000,000 MC samples.
-        -->
-        <p>%s</p>
+	ndim=3:
+	difficulty=0 gives -6.26047 with 100,000,000 MC samples.
+	difficulty=1 gives -1.7 first -1.62 with 1000,000,000 MC samples.
+	
+	ndim=4:
+	difficulty=0 gives -7.9077 with 100,000,000 MC samples.
+	difficulty=1 gives -2+-0.05 with 1000,000,000 MC samples.
+	
+	ndim=5:
+	difficulty=0 gives -9.48 with 300,000,000 MC samples.
+	difficulty=1 gives -2.1+-0.2 with 1000,000,000 MC samples.
+	difficulty=2 gives -2.3 with 200,000,000 MC samples.
+	difficulty=3 gives -2.43 with 1000,000,000 MC samples.
+	
+	ndim=10:
+	difficulty=0 gives -17        with 100,000,000 MC samples.
+	difficulty=1 gives -3.1+-0.1  with 500,000,000 MC samples.
+	difficulty=2 gives -3.37+-0.1 with 350,000,000 MC samples.
+	difficulty=3 gives -3.40+-0.05 with 250,000,000 MC samples.
+	-->
+	<p>%s</p>
 	""" % (ndim, str(xobs))
 	return config
 	
@@ -339,15 +339,15 @@ def create_problem_ffunnel(**config):
 	#	(2,3):-2.00452,(5,3):-2.50263, (10,3):-3.42846,     (20,3): -4.15,
 	#	(2,4):-1.687,  (5,4):-2.30399, 
 	#	(2,5):-1.4466, (5,5):-2.33, (10,5): -3.3, (20,5): 0,
-        #}.get((ndim,difficulty), 0)
-        import json, os
-        Z_analytic = json.load(open(os.path.join(os.path.dirname(__file__), 'ffunnel_integrate_pmciter_results.json')))[str(ndim)][str(difficulty)]['lnZ']
+	#}.get((ndim,difficulty), 0)
+	import json, os
+	Z_analytic = json.load(open(os.path.join(os.path.dirname(__file__), 'ffunnel_integrate_pmciter_results.json')))[str(ndim)][str(difficulty)]['lnZ']
 	config['loglikelihood'] = loglikelihood
 	config['Z_analytic'] = Z_analytic
 	config['description'] = """A gaussian with mean 0.5, stdev first parameter.
 	In %d dimensions. Unimodal and peculariar shape, heavy contributions off-maximum.
 	<p>TODO: the analytic value has not been verified for ndim>2
-        </p>
+	</p>
 	""" % (ndim)
 	return config
 		
