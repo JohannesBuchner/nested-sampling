@@ -111,77 +111,62 @@ int count_within_distance_of(
 	return 0;
 }
 
-const double * current_dists;
-
-int compare_dists(const void * ap, const void * bp) {
-	const int a = * (int *) ap;
-	const int b = * (int *) bp;
-	if (current_dists[a] < current_dists[b]) {
-		return -1;
-	} else {
-		return +1;
-	}
-}
-
 /**
- *
- * clusters needs to be set to arange(n)
+ * xxp are double points (nsamples x ndim)
+ * choicep is whether the point is selected in the bootstrap round (nsamples x nbootstraps)
  */
-
-int jarvis_patrick_clustering(
-	const void * xxp, int n, int K, int J, 
-	int * clusters
+double bootstrapped_maxdistance(
+	const void * xxp, 
+	int nsamples, int ndim,
+	const void * choicep,
+	int nbootstraps
 ) {
-	const adouble * dists = (const adouble*) xxp;
-	int neighbors_list[n][K];
-	int neighbors_list_i[n];
+	const adouble * xx = (const adouble*) xxp;
+	const adouble * chosen = (const adouble*) choicep;
+
+	double furthest_ds[nbootstraps];
+	double furthest_d_bs;
 	
-	for (int i = 0; i < n; i++) {
-		// order its nearest neighbors
-		for (int j = 0; j < n; j++) {
-			neighbors_list_i[j] = j;
+	#ifdef PARALLEL
+	#pragma omp parallel for
+	#endif
+	for(int b = 0; b < nbootstraps; b++) {
+		double nearest_ds[nsamples];
+		double furthest_d = 0;
+		//printf("bootstrap round %d\n", b);
+		// find one that was not chosen
+		for (int i = 0; i < nsamples; i++) {
+			if (chosen[i*nbootstraps + b] != 0) continue;
+			//printf("   considering %d\n", i);
+			double nearest_d = 1e300;
+			for (int j = 0; j < nsamples; j++) {
+				if (chosen[j*nbootstraps + b] == 0) continue;
+				double d = 0;
+				for (int k = 0; k < ndim; k++) {
+					d += sqr(xx[i*ndim + k] - xx[j*ndim + k]);
+				}
+				if (d < nearest_d) {
+					nearest_d = d;
+				}
+			}
+			//printf("    %d: %f\n", i, sqrt(nearest_d));
+			nearest_ds[i] = sqrt(nearest_d);
 		}
-		current_dists = dists + i * n;
-		qsort(neighbors_list_i, n, sizeof(int), compare_dists);
-		// now neighbors_list_i should be sorted, with nearest at 0
-		// we want 1...K+1
-		for (int j = 0; j < K; j++) {
-			neighbors_list[i][j] = neighbors_list_i[j+1];
+		for (int i = 1; i < nsamples; i++) {
+			if (chosen[i*nbootstraps + b] != 0) continue;
+			if (nearest_ds[i] > furthest_d)
+				furthest_d = nearest_ds[i];
 		}
+		//printf("bootstrap round %d gave %f\n", b, furthest_d);
+		furthest_ds[b] = furthest_d;
 	}
-	for (int i = 0; i < n; i++) {
-		for (int j = 0; j < i; j++) {
-			// count how many in common in neighbors_list
-			int in_common = 0;
-			for (int k = 0; k < K; k++) {
-				int a = neighbors_list[i][k];
-				for (int k2 = 0; k2 < K; k2++) {
-					if (neighbors_list[j][k] == a) {
-						in_common++;
-						break;
-					}
-				}
-			}
-			if (in_common >= J) {
-				// re-assign clusters
-				int c1 = clusters[i];
-				int c2 = clusters[j];
-				if (c1 == c2)
-					continue;
-				if (c1 > c2) {
-					c1 = clusters[j];
-					c2 = clusters[i];
-				}
-				// move all from c2 to c1
-				for (int k = 0; k < n; k++) {
-					if (clusters[k] == c2) {
-						clusters[k] = c1;
-					}
-				}
-			}
-		}
+	
+	furthest_d_bs = furthest_ds[0];
+	for (int i = 1; i < nbootstraps; i++) {
+		if (furthest_ds[i] > furthest_d_bs)
+			furthest_d_bs = furthest_ds[i];
 	}
 
-	return 0;
+	IFVERBOSE printf("result: %f\n", furthest_d_bs);
+	return furthest_d_bs;
 }
-

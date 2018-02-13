@@ -108,12 +108,15 @@ class RadFriendsRegion(object):
 		# if too large, large cdist matrices, spikes in memory use
 		N = 1000
 		verbose = self.verbose
+		nall = 0
 		ntotal = 0
 		#print 'draw from radfriends'
-		while nmax == 0 or ntotal < nmax:
+		while nmax == 0 or nall < nmax:
+			#print 'drew %d/%d so far' % (N, nmax)
 			# draw from box
 			# this can be efficient if there are a lot of points
 			ntotal = ntotal + N
+			nall += N
 			us = numpy.random.uniform(self.lo, self.hi, size=(N, ndim))
 			mask = self.are_inside(us)
 			#print 'accepted %d/%d [box draw]' % (mask.sum(), N)
@@ -128,6 +131,7 @@ class RadFriendsRegion(object):
 			# this can be efficient in higher dimensions
 			us = members[numpy.random.randint(0, len(members), N),:]
 			ntotal = ntotal + N
+			nall += N
 			if verbose: print 'chosen point', us
 			# draw direction around it
 			direction = numpy.random.normal(0, 1, size=(N, ndim))
@@ -207,6 +211,8 @@ class MetricLearningFriendsConstrainer(object):
 		self.metric = IdentityMetric()
 		self.clusters = None
 		self.direct_draws_efficient = True
+		self.last_cluster_points = None
+		self.prev_maxdistance = None
 	
 	def cluster(self, u, ndim, keepMetric=False):
 		"""
@@ -224,8 +230,9 @@ class MetricLearningFriendsConstrainer(object):
 		prev_region = self.region
 		if keepMetric:
 			self.region = RadFriendsRegion(members=w)
-			if self.force_shrink and self.region.maxdistance > prev_region.maxdistance:
-				self.region = RadFriendsRegion(members=w, maxdistance=prev_region.maxdistance)
+			if self.force_shrink and self.region.maxdistance > self.prev_maxdistance:
+				self.region = RadFriendsRegion(members=w, maxdistance=self.prev_maxdistance)
+			self.prev_maxdistance = self.region.maxdistance
 			return
 		
 		metric_updated = False
@@ -266,6 +273,10 @@ class MetricLearningFriendsConstrainer(object):
 			metric = SDML()
 			metric.fit(shifted_cluster_members, W = numpy.ones((len(w), len(w))))
 			metric_updated = True
+		elif self.metriclearner == 'truncatedsdml':
+			metric = TruncatedSDML()
+			metric.fit(shifted_cluster_members, W = numpy.ones((len(w), len(w))))
+			metric_updated = self.metric == IdentityMetric() or not (numpy.all(self.metric.scale == metric.scale) and numpy.all(self.metric.cov == metric.cov))
 		else:
 			assert False, self.metriclearner
 		
@@ -284,9 +295,10 @@ class MetricLearningFriendsConstrainer(object):
 		if self.verbose: print 'Region update ...'
 		
 		self.region = RadFriendsRegion(members=wnew) #, maxdistance=shifted_region.maxdistance)
-		if not metric_updated and self.force_shrink and prev_region is not None:
-			if self.region.maxdistance > prev_region.maxdistance:
-				self.region = RadFriendsRegion(members=w, maxdistance=prev_region.maxdistance)
+		if not metric_updated and self.force_shrink and self.prev_maxdistance is not None:
+			if self.region.maxdistance > self.prev_maxdistance:
+				self.region = RadFriendsRegion(members=w, maxdistance=self.prev_maxdistance)
+		self.prev_maxdistance = self.region.maxdistance
 		
 		if oldclusters is None or len(clusters) != len(oldclusters):
 		#if True:
@@ -325,9 +337,27 @@ class MetricLearningFriendsConstrainer(object):
 			
 		"""
 		N = 10000
-		while True:
+		for i in range(100):
+			#print 'generator iteration %d' % i
 			#if numpy.random.uniform() < 0.01:
-			if True:
+			if ndim < 40:
+				# draw from radfriends directly
+				for ws, n in self.region.generate(N):
+					us = self.metric.untransform(ws)
+					#assert us.shape[1] == ndim, us.shape
+					ntotal = ntotal + n
+					mask = numpy.logical_and(us < 1, us > 0).all(axis=1)
+					#assert mask.shape == (len(us),), (mask.shape, us.shape)
+					#print '  %d of %d radfriends drawn suggestions accepted' % (mask.sum(), n)
+					if mask.any():
+						for u in us[mask,:]:
+							#assert u.shape == (us[0].shape), (u.shape, us.shape, mask.shape)
+							yield u, ntotal
+							ntotal = 0
+					#if all([0 <= ui <= 1 for ui in u]):
+					#	yield u, ntotal
+					#	ntotal = 0
+			if i > 90:
 				# draw from unit cube
 				# this can be efficient if volume still large
 				ntotal = ntotal + N
@@ -339,26 +369,10 @@ class MetricLearningFriendsConstrainer(object):
 					#print 'unit cube draw success:', ntotal
 					yield u, ntotal
 					ntotal = 0
-			if ndim < 40:
-				# draw from radfriends directly
-				for ws, n in self.region.generate(N):
-					us = self.metric.untransform(ws)
-					assert us.shape[1] == ndim, us.shape
-					ntotal = ntotal + n
-					mask = numpy.logical_and(us < 1, us > 0).all(axis=1)
-					assert mask.shape == (len(us),), (mask.shape, us.shape)
-					if mask.any():
-						#print 'radfriends draw in unit cube:', mask.sum(), ntotal
-						for u in us[mask,:]:
-							assert u.shape == (us[0].shape), (u.shape, us.shape, mask.shape)
-							yield u, ntotal
-							ntotal = 0
-					#if all([0 <= ui <= 1 for ui in u]):
-					#	yield u, ntotal
-					#	ntotal = 0
-		
+	
 	def rebuild(self, u, ndim, keepMetric=False):
 		self.cluster(u=u, ndim=ndim, keepMetric=keepMetric)
+		self.last_cluster_points = u
 		if len(self.phantom_points) > 0:
 			print 'adding phantom points to radfriends:', self.phantom_points
 			self.region.add_members(self.metric.transform(self.phantom_points))
@@ -463,6 +477,7 @@ class MetricLearningFriendsConstrainer(object):
 		ntoaccept, ntotalsum, rebuild = self._draw_constrained_prepare(Lmin, priortransform, loglikelihood, live_pointsu, ndim, **kwargs)
 		rebuild_metric = rebuild
 		while True:
+			rebuild_triggered = False
 			for u, ntotal in self.generator:
 				assert (u >= 0).all() and (u <= 1).all(), u
 				ntotalsum += ntotal
@@ -480,13 +495,26 @@ class MetricLearningFriendsConstrainer(object):
 				
 				# if running very inefficient, optimize clustering 
 				#     if we haven't done so at the start
-				if not rebuild and ntoaccept > 1000:
+				if not rebuild and ntoaccept > 400:
 					rebuild = True
 					print 'low efficiency is triggering RadFriends rebuild'
 					self.rebuild(numpy.asarray(live_pointsu), ndim, keepMetric=True)
+					rebuild_triggered = True
 					break
-				#if not rebuild_metric and ntoaccept > 1000:
-				#	rebuild_metric = True
-				#	print 'low efficiency is triggering metric rebuild'
-				#	self.rebuild(numpy.asarray(live_pointsu), ndim, keepMetric=False)
-				#	break
+				if not rebuild_metric and ntoaccept > 2000:
+					rebuild_metric = True
+					print 'low efficiency is triggering metric rebuild'
+					self.rebuild(numpy.asarray(live_pointsu), ndim, keepMetric=False)
+					rebuild_triggered = True
+					break
+			
+			print 'generator complete. %d %d %d' % (rebuild, rebuild_metric, rebuild_triggered)
+			if not rebuild_triggered and not rebuild_metric:
+				#raise Exception('RadFriends is not drawing efficiently for this problem. Use RadFriends in combination with MCMC.')
+				rebuild = True
+				rebuild_metric = True
+				print 'low radfriends drawing efficiency is triggering metric rebuild'
+				self.direct_draws_efficient = False
+				self.rebuild(numpy.asarray(live_pointsu), ndim, keepMetric=False)
+			else:
+				self.generator = self.generate(ndim)

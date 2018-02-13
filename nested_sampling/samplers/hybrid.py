@@ -14,7 +14,7 @@ class FilteredGaussProposal(BaseProposal):
 	@see BaseProposal
 	"""
 	def __init__(self, adapt = True, scale = 1.):
-		BaseProposal.__init__(self, adapt=adapt, scale=scale)
+		BaseProposal.__init__(self, adapt=adapt, scale=float(scale))
 	
 	def new_chain(self, u, ndim, points, is_inside_filter):
 		BaseProposal.new_chain(self)
@@ -33,6 +33,22 @@ class FilteredGaussProposal(BaseProposal):
 	def __repr__(self):
 		return 'FilteredGaussProposal(scale=%s, adapt=%s)' % (self.scale, self.adapt)
 
+class FilteredGibbsProposal(FilteredGaussProposal):
+	"""
+	Symmetric gaussian, component-wise proposal.
+
+	@see FilteredGaussProposal
+	"""
+	def propose(self, u, ndim, points, is_inside_filter):
+		while True:
+			i = numpy.random.randint(ndim)
+			p = u.copy()
+			p[i] += numpy.random.normal(0, self.scale)
+			if not is_inside_filter(p):
+				# narrow down
+				self.accept(False)
+			return p
+
 class FilteredSVarGaussProposal(BaseProposal):
 	"""
 	Gaussian proposal, scaled by std of live points in each dimension.
@@ -40,11 +56,12 @@ class FilteredSVarGaussProposal(BaseProposal):
 	@see BaseProposal
 	"""
 	def __init__(self, adapt = True, scale = 1.):
-		BaseProposal.__init__(self, adapt=adapt, scale=scale)
+		BaseProposal.__init__(self, adapt=adapt, scale=float(scale))
 	
 	def new_chain(self, u, ndim, points, is_inside_filter):
 		BaseProposal.new_chain(self)
 		self.axes_scale = numpy.std(points, axis=0)
+		#print 'scale:', self.axes_scale, self.scale
 		assert self.axes_scale.shape == (ndim,), self.axes_scale.shape
 	
 	def new_direction(self, u, ndim, points, is_inside_filter):
@@ -53,13 +70,31 @@ class FilteredSVarGaussProposal(BaseProposal):
 	def propose(self, u, ndim, points, is_inside_filter):
 		while True:
 			p = numpy.random.normal(u, self.scale * self.axes_scale)
-			if not is_inside_filter(p):
+			if is_inside_filter(p):
+				return p
+			else:
 				# narrow down
 				self.accept(False)
-			return p
 	
 	def __repr__(self):
 		return 'FilteredSVarGaussProposal(scale=%s, adapt=%s)' % (self.scale, self.adapt)
+
+class FilteredSVarGibbsProposal(FilteredSVarGaussProposal):
+	"""
+	Component-wise Gaussian proposal, scaled by std of live points in each dimension.
+
+	@see FilteredSVarGaussProposal
+	"""
+	def propose(self, u, ndim, points, is_inside_filter):
+		while True:
+			i = numpy.random.randint(ndim)
+			p = u.copy()
+			p[i] += numpy.random.normal(0, self.scale * self.axes_scale[i])
+			if is_inside_filter(p):
+				return p
+			else:
+				# narrow down
+				self.accept(False)
 
 class FilteredMahalanobisGaussProposal(BaseProposal):
 	"""
@@ -68,7 +103,7 @@ class FilteredMahalanobisGaussProposal(BaseProposal):
 	@see BaseProposal
 	"""
 	def __init__(self, adapt = True, scale = 1.):
-		BaseProposal.__init__(self, adapt=adapt, scale=scale)
+		BaseProposal.__init__(self, adapt=adapt, scale=float(scale))
 	
 	def new_chain(self, u, ndim, points, is_inside_filter):
 		BaseProposal.new_chain(self)
@@ -81,13 +116,39 @@ class FilteredMahalanobisGaussProposal(BaseProposal):
 	def propose(self, u, ndim, points, is_inside_filter):
 		while True:
 			p = numpy.random.multivariate_normal(u, self.scale * self.metric)
-			if not is_inside_filter(p):
+			if is_inside_filter(p):
+				return p
+			else:
 				# narrow down
 				self.accept(False)
-			return p
 	
 	def __repr__(self):
 		return 'FilteredMahalanobisGaussProposal(scale=%s, adapt=%s)' % (self.scale, self.adapt)
+
+class FilteredEigVecGibbsProposal(FilteredMahalanobisGaussProposal):
+	"""
+	Eigenvector-wise Gaussian proposal
+
+	@see FilteredMahalanobisGaussProposal
+	"""
+	def new_chain(self, u, ndim, points, is_inside_filter):
+		BaseProposal.new_chain(self)
+		self.metric = numpy.cov(numpy.transpose(points))
+		assert self.metric.shape == (ndim,ndim), self.metric.shape
+		w, v = numpy.linalg.eig(self.metric)
+		self.eigvec = w * v
+		assert self.eigvec.shape == (ndim, ndim), self.eigvec.shape
+	
+	def propose(self, u, ndim, points, is_inside_filter):
+		while True:
+			i = numpy.random.randint(ndim)
+			p = u.copy()
+			p += numpy.random.normal(0, self.scale) * self.eigvec[i]
+			if is_inside_filter(p):
+				return p
+			else:
+				# narrow down
+				self.accept(False)
 
 class FilteredUnitHARMProposal(BaseProposal):
 	"""
@@ -96,7 +157,7 @@ class FilteredUnitHARMProposal(BaseProposal):
 	@see BaseProposal
 	"""
 	def __init__(self, adapt = False, scale = 1.):
-		BaseProposal.__init__(self, adapt=False, scale=scale)
+		BaseProposal.__init__(self, adapt=False, scale=float(scale))
 	
 	def generate_direction(self, u, ndim, points):
 		# generate unit direction
@@ -108,27 +169,32 @@ class FilteredUnitHARMProposal(BaseProposal):
 		self.new_direction(u, ndim, points, is_inside_filter)
 	def new_direction(self, u, ndim, points, is_inside_filter):
 		d = self.generate_direction(u, ndim, points)
-		
+		print 'initial scale:', self.scale
 		# find end points
 		forward_scale = self.scale
 		# find a scale that is too large
 		while True:
+			assert forward_scale > 0
 			p_for = u + d * forward_scale
 			if is_inside_filter(p_for):
 				# we are proposing too small. We should be outside
 				forward_scale *= 2
+				print 'too small, stepping further', forward_scale
 			else:
 				break
 		
 		backward_scale = self.scale
 		# find a scale that is too large
 		while True:
+			assert backward_scale > 0
 			p_rev = u - d * backward_scale
 			if is_inside_filter(p_rev):
 				# we are proposing too small. We should be outside
+				print 'too small, stepping back', backward_scale
 				backward_scale *= 2
 			else:
 				break
+		# remember scale for next time:
 		self.backward_scale = -backward_scale
 		self.forward_scale = forward_scale
 		self.direction = d
@@ -136,13 +202,18 @@ class FilteredUnitHARMProposal(BaseProposal):
 	def propose(self, u, ndim, points, is_inside_filter):
 		# generate a random point between the two points.
 		while True:
+			print 'slice range:', (self.backward_scale, self.forward_scale)
 			x = numpy.random.uniform(self.backward_scale, self.forward_scale)
 			p = u + self.direction * x
+			assert self.forward_scale - self.backward_scale > 1e-100
 			if x < 0:
 				self.backward_scale = x
 			else:
 				self.forward_scale = x
 			if is_inside_filter(p):
+				if self.adapt:
+					self.scale = self.forward_scale - self.backward_scale
+					print 'adapting scale to', self.scale
 				return p
 	
 	def accept(self, accepted):
@@ -151,6 +222,40 @@ class FilteredUnitHARMProposal(BaseProposal):
 	
 	def __repr__(self):
 		return 'FilteredUnitHARMProposal(scale=%s, adapt=%s)' % (self.scale, self.adapt)
+
+class FilteredUnitIterateSliceProposal(FilteredUnitHARMProposal):
+	"""
+	Unit Slice sampling proposal, iterative component-wise.
+
+	@see BaseProposal
+	"""
+	def __init__(self, adapt = False, scale = 1.):
+		BaseProposal.__init__(self, adapt=False, scale=float(scale))
+		self.curindex = 0
+	
+	def generate_direction(self, u, ndim, points):
+		# choose next base vector
+		d = numpy.zeros(ndim)
+		self.curindex = (self.curindex + 1) % ndim
+		d[self.curindex] = 1
+		return d
+	def __repr__(self):
+		return 'FilteredUnitIterateSliceProposal(scale=%s, adapt=%s)' % (self.scale, self.adapt)
+
+class FilteredUnitRandomSliceProposal(FilteredUnitHARMProposal):
+	"""
+	Unit Slice sampling proposal, random component-wise.
+
+	@see BaseProposal
+	"""
+	def generate_direction(self, u, ndim, points):
+		# choose a random base vector
+		d = numpy.zeros(ndim)
+		i = numpy.random.randint(ndim)
+		d[i] = 1
+		return d
+	def __repr__(self):
+		return 'FilteredUnitRandomSliceProposal(scale=%s, adapt=%s)' % (self.scale, self.adapt)
 
 class FilteredMahalanobisHARMProposal(FilteredUnitHARMProposal):
 	"""
@@ -269,33 +374,38 @@ class FilteredMCMCConstrainer(object):
 	
 	def draw_constrained(self, Lmin, priortransform, loglikelihood, live_pointsu, ndim, live_points_and_phantoms_u, is_inside_filter, startu, startx, startL):
 		ui, xi, Li = startu, startx, startL
-		self.proposer.new_chain(ui, ndim, live_points_and_phantoms_u, is_inside_filter)
-		n = 0
-		naccepts = 0
-		for i in range(self.nmaxsteps):
-			u = self.proposer.propose(ui, ndim, live_points_and_phantoms_u, is_inside_filter)
-			x = priortransform(u)
-			L = loglikelihood(x)
-			n = n + 1
-			# MH accept rule
-			# accept = L > Li or numpy.random.uniform() < exp(L - Li)
-			# Likelihood-difference independent, because we do
-			# exploration of the prior (full diffusion).
-			# but only accept in constrained region, because that
-			# is what we are exploring now.
-			accept = L >= Lmin
-			if accept:
-				ui, xi, Li = u, x, L
-				self.proposer.new_direction(ui, ndim, live_points_and_phantoms_u, is_inside_filter)
-				naccepts += 1
+		while True:
+			self.proposer.new_chain(ui, ndim, live_points_and_phantoms_u, is_inside_filter)
+			n = 0
+			naccepts = 0
+			for i in range(self.nmaxsteps):
+				u = self.proposer.propose(ui, ndim, live_points_and_phantoms_u, is_inside_filter)
+				x = priortransform(u)
+				L = loglikelihood(x)
+				n = n + 1
+				# MH accept rule
+				# accept = L > Li or numpy.random.uniform() < exp(L - Li)
+				# Likelihood-difference independent, because we do
+				# exploration of the prior (full diffusion).
+				# but only accept in constrained region, because that
+				# is what we are exploring now.
+				accept = L >= Lmin
+				if accept:
+					ui, xi, Li = u, x, L
+					self.proposer.new_direction(ui, ndim, live_points_and_phantoms_u, is_inside_filter)
+					naccepts += 1
 			
-			# tell proposer so it can scale
-			self.proposer.accept(accept)
+				# tell proposer so it can scale
+				self.proposer.accept(accept)
 			
-			if i + 1 >= self.nsteps and naccepts >= self.nminaccepts:
-				if Li > Lmin:
-					return ui, xi, Li, n
-		
+				if i + 1 >= self.nsteps and naccepts >= self.nminaccepts:
+					if Li > Lmin:
+						self.start_finish_check(ui, startu, live_pointsu)
+						return ui, xi, Li, n
+			if naccepts > 0:
+				break
+			else:
+				print 'restarting failed chain...'
 		#print 'accepted %d' % naccepts
 		#self.proposer.stats()
 		if Li < Lmin:
@@ -304,11 +414,106 @@ class FilteredMCMCConstrainer(object):
 			print 'ERROR: Proposer stats:',
 			self.proposer.stats()
 			assert Li >= Lmin, (Li, Lmin, self.nmaxsteps, numpy.mean(self.proposer.accepts), len(self.proposer.accepts))
+		self.start_finish_check(ui, startu, live_pointsu)
 		return ui, xi, Li, n
+	
+	def start_finish_check(self, ui, startu, live_pointsu):
+		pass
 
 	def stats(self):
 		return self.proposer.stats()
 
+class FilteredSliceConstrainer(object):
+	"""
+	Markov chain Monte Carlo proposals using the Metropolis update: 
+	Do a number of steps, while adhering to boundary.
+	"""
+	def __init__(self, proposer, nsteps = 200):
+		self.proposer = proposer
+		self.sampler = None
+		self.nsteps = nsteps
+	
+	def draw_constrained(self, Lmin, priortransform, loglikelihood, live_pointsu, ndim, live_points_and_phantoms_u, is_inside_filter, startu, startx, startL):
+		ui, xi, Li = startu, startx, startL
+		assert Li >= Lmin, (Li, Lmin)
+		print 'new chain...', Lmin, Li, startu
+		self.proposer.new_chain(ui, ndim, live_points_and_phantoms_u, is_inside_filter)
+		for i in range(self.nsteps):
+			n = 0
+			naccepts = 0
+			while True:
+				print 'proposing ...', ui
+				u = self.proposer.propose(ui, ndim, live_points_and_phantoms_u, is_inside_filter)
+				x = priortransform(u)
+				L = loglikelihood(x)
+				n = n + 1
+				# MH accept rule
+				# accept = L > Li or numpy.random.uniform() < exp(L - Li)
+				# Likelihood-difference independent, because we do
+				# exploration of the prior (full diffusion).
+				# but only accept in constrained region, because that
+				# is what we are exploring now.
+				accept = L >= Lmin
+				# tell proposer so it can scale
+				self.proposer.accept(accept)
+				
+				if accept:
+					ui, xi, Li = u, x, L
+					naccepts += 1
+					print 'accepting; new direction.', Lmin, u, L
+					self.proposer.new_direction(ui, ndim, live_points_and_phantoms_u, is_inside_filter)
+					break
+			
+			
+		#print 'accepted %d' % naccepts
+		#self.proposer.stats()
+		if Li < Lmin:
+			print
+			print 'ERROR: FilteredSliceConstrainer could not find a point matching constraint!'
+			print 'ERROR: Proposer stats:',
+			self.proposer.stats()
+			assert Li >= Lmin, (Li, Lmin, self.nsteps, numpy.mean(self.proposer.accepts), len(self.proposer.accepts))
+		self.start_finish_check(ui, startu, live_pointsu)
+		return ui, xi, Li, n
+	
+	def start_finish_check(self, ui, startu, live_pointsu):
+		pass
+
+	def stats(self):
+		return self.proposer.stats()
+
+
+class FilteredVarlengthMCMCConstrainer(FilteredMCMCConstrainer):
+	"""
+	Markov chain Monte Carlo proposals using the Metropolis update: 
+	Do a number of steps, while adhering to boundary.
+	"""
+	def __init__(self, proposer, nsteps_initial = 2, nmaxsteps = 10000):
+		FilteredMCMCConstrainer.__init__(self, proposer=proposer, nminaccepts=nsteps_initial, nsteps=nsteps_initial, nmaxsteps = nmaxsteps)
+		self.last_was_start_memory = []
+
+	def start_finish_check(self, ui, startu, live_pointsu):
+		# is final point closest live point
+		i = numpy.argmin(((live_pointsu - ui)**2).sum(axis=1))
+		j = numpy.argmin(((live_pointsu - startu)**2).sum(axis=1))
+		self.last_was_start_memory.append(i == j)
+		
+		# this should happen exactly once every len(live_pointsu)
+		#lam = 1. / len(live_pointsu)
+		lam = 1. / 5
+		memory_part = self.last_was_start_memory[-4*len(live_pointsu):]
+		n = len(memory_part)
+		k = sum(memory_part)
+		prob = scipy.stats.binom.pmf(k, n, lam)
+		if k > lam * n and prob < 2.87e-7: # 5 sigma
+			self.nsteps = self.nsteps * 2
+			self.nminaccepts = self.nminaccepts * 2
+			print 'Saw %d/%d start~end cases, expected %.1f, probability is %.2e --> extending MCMC chains to %d steps' % (k, n, lam*n, prob, self.nsteps)
+			self.last_was_start_memory = []
+	
+	def stats(self):
+		print 'FilteredVarlengthMCMCConstrainer: final nsteps was %d' % self.nsteps
+		return self.proposer.stats()
 
 class HybridFriendsConstrainer(object):
 	"""
@@ -350,7 +555,7 @@ class HybridFriendsConstrainer(object):
 						#self.debugplot(u)
 				#print 'returning:', u, x, L, ntoaccept
 				return u, x, L, ntoaccept
-			
+			print 'unsuccessful search; trying different starting point'
 			# unsuccessful search so far. Try a different start point.
 			starti = numpy.random.randint(len(live_pointsu))
 			startu = live_pointsu[starti]
@@ -363,6 +568,9 @@ class HybridFriendsConstrainer(object):
 				rebuild = True
 				self.friends.rebuild(numpy.asarray(live_pointsu), ndim, keepRadius=False)
 
+	def stats(self):
+		print 'HybridFriendsConstrainer: %s' % ('used direct draws throughout (no MCMC)' if self.use_direct_draw else 'switched over to MCMC')
+		return self.mcmc_proposer.stats()
 
 class HybridMLFriendsConstrainer(object):
 	"""
@@ -440,6 +648,10 @@ class HybridMLFriendsConstrainer(object):
 				rebuild = True
 				self.friends.rebuild(numpy.asarray(live_pointsu), ndim, keepMetric=False)
 
+	def stats(self):
+		print 'HybridFriendsConstrainer: %s' % ('used direct draws throughout (no MCMC)' if self.use_direct_draw else 'switched over to MCMC')
+		return self.mcmc_proposer.stats()
+
 class HybridMultiEllipsoidConstrainer(object):
 	"""
 	Do MCMC within MultiEllipsoid constraints
@@ -515,7 +727,11 @@ class HybridMultiEllipsoidConstrainer(object):
 				rebuild = True
 				self.update(live_pointsu)
 
-from nested_sampling.clustering.sdml import IdentityMetric, SimpleScaling, TruncatedScaling, MahalanobisMetric, TruncatedMahalanobisMetric, SDML
+	def stats(self):
+		print 'HybridFriendsConstrainer: %s' % ('used direct draws throughout (no MCMC)' if self.use_direct_draw else 'switched over to MCMC')
+		return self.mcmc_proposer.stats()
+
+from nested_sampling.clustering.sdml import IdentityMetric, SimpleScaling, TruncatedScaling, MahalanobisMetric, TruncatedMahalanobisMetric, SDML, TruncatedSDML
 
 class HybridMLMultiEllipsoidConstrainer(object):
 	"""
@@ -708,4 +924,7 @@ class HybridMLMultiEllipsoidConstrainer(object):
 				rebuild = True
 				self.update(live_pointsu)
 
+	def stats(self):
+		print 'HybridFriendsConstrainer: %s' % ('used direct draws throughout (no MCMC)' if self.use_direct_draw else 'switched over to MCMC')
+		return self.mcmc_proposer.stats()
 

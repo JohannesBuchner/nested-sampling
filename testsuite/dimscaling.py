@@ -36,7 +36,7 @@ algorithms_generators = [
 	#	),
 	lambda nlive, _: dict(
 		algorithm_name='nestle-nlive%d' % (nlive),
-		algorithm_shortname='nestle-20%enlarge',
+		algorithm_shortname='multiellipsoid-20%enlarge',
 		nlive_points = nlive,
 		run = algorithms.runnestle.run_nestle,
 		method='multi',
@@ -44,12 +44,12 @@ algorithms_generators = [
 		),
 	lambda nlive, _: dict(
 		algorithm_name='nestle-remembering-nlive%d' % (nlive),
-		algorithm_shortname='nestle-robustenlarge',
+		algorithm_shortname='multiellipsoid-robustenlarge',
 		nlive_points = nlive,
 		run = algorithms.runnestle.run_nestle,
 		method='multi-rememberingrobust',
 		color='orange', ls='-', marker='o',
-		disable=False, # still running in other thread
+		#disable=True, #running in another thread
 		),
 	lambda nlive, nrepeats: dict(draw_method='hmlfriendsM-harm+%dsteps' % nrepeats, 
 		metriclearner='mahalanobis', 
@@ -58,11 +58,23 @@ algorithms_generators = [
 		proposer = 'harm', nsteps=nrepeats, nminaccepts=nrepeats, 
 		integrator='normal-verysmall',
 		algorithm_name='NS-ml-harm+%dsteps-nlive%d-normal-verysmall' % (nrepeats, nlive),
-		algorithm_shortname='NS-ml-harm',
+		algorithm_shortname='harm-ml',
 		nlive_points = nlive,
 		run = algorithms.nest.run_nested,
 		color='brown', ls='-', marker='x',
-		#disable=True, # because another thread is running it right now
+		),
+	lambda nlive, nrepeats: dict(draw_method='hmlfriendsM-harm+varsteps', 
+		metriclearner='mahalanobis', 
+		keep_phantom_points=False, optimize_phantom_points=False, force_shrink=False,
+		unfiltered=True,
+		proposer = 'harm', nsteps=-2, nminaccepts=2, 
+		integrator='normal-verysmall',
+		algorithm_name='NS-ml-harm+varsteps-nlive%d-normal-verysmall' % (nlive),
+		algorithm_shortname='harm-ml',
+		nlive_points = nlive,
+		run = algorithms.nest.run_nested,
+		color='brown', ls='-', marker='+',
+		disable=True, # just too slow
 		),
 	#lambda nlive, nrepeats: dict(draw_method='hmlmultiellipsoid2-harm+%dsteps' % nrepeats, 
 	#	metriclearner='simplescaling', 
@@ -93,7 +105,7 @@ algorithms_generators = [
 		proposer = 'harm', nsteps=nrepeats, nminaccepts=nrepeats, 
 		integrator='normal-bs',
 		algorithm_name='NS-hmlmultiellipsoidBS-harm+%dsteps-nlive%d-normal-bs' % (nrepeats, nlive),
-		algorithm_shortname='NS-hmlmultiellipsoidBS-harm',
+		algorithm_shortname='multiellipsoid-harm-ml',
 		nlive_points = nlive,
 		bs_enabled=True,
 		run = algorithms.nest.run_nested,
@@ -105,7 +117,7 @@ algorithms_generators = [
 		proposer = 'harm', nsteps=nrepeats, nminaccepts=nrepeats, 
 		integrator='normal-bs',
 		algorithm_name='NS-hmlmultiellipsoidBSM-switch%d-harm+%dsteps-nlive%d-normal-bs' % (100+nrepeats*5, nrepeats, nlive),
-		algorithm_shortname='NS-hmlmultiellipsoidBSM-switch-harm',
+		algorithm_shortname='multiellipsoid-switch-harm-ml',
 		switchover_efficiency=1./(100 + nrepeats*5),
 		nlive_points = nlive,
 		bs_enabled=True,
@@ -132,7 +144,7 @@ algorithms_generators = [
 		proposer = 'harm', nsteps=nrepeats, nminaccepts=nrepeats, 
 		integrator='normal-bs',
 		algorithm_name='NS-hmlfriendsTM-switch%d-harm+%dsteps-optphantoms-nlive%d-normal-bs' % (100+nrepeats*5, nrepeats, nlive),
-		algorithm_shortname='NS-hmlfriendsTM-switch-harm',
+		algorithm_shortname='radfriends-switch-harm-Tml',
 		switchover_efficiency=1./(100 + nrepeats*5),
 		nlive_points = nlive,
 		run = algorithms.nest.run_nested,
@@ -145,7 +157,7 @@ algorithms_generators = [
 		proposer = 'harm', nsteps=nrepeats, nminaccepts=nrepeats, 
 		integrator='normal-bs',
 		algorithm_name='NS-hmlfriendsTM-harm+%dsteps-nlive%d-normal-bs' % (nrepeats, nlive),
-		algorithm_shortname='NS-hmlfriendsTM-harm',
+		algorithm_shortname='radfriends-harm-Tml',
 		nlive_points = nlive,
 		run = algorithms.nest.run_nested,
 		color='g', ls=':', marker='s',
@@ -157,7 +169,7 @@ algorithms_generators = [
 		proposer = 'harm', nsteps=nrepeats, nminaccepts=nrepeats, 
 		integrator='normal-bs',
 		algorithm_name='NS-hmlfriendsTM-switch%d-harm+%dsteps-nlive%d-normal-bs' % (100+nrepeats*5, nrepeats, nlive),
-		algorithm_shortname='NS-hmlfriendsTM-switch-harm',
+		algorithm_shortname='radfriends-switch-harm-Tml',
 		switchover_efficiency=1./(100 + nrepeats*5),
 		nlive_points = nlive,
 		run = algorithms.nest.run_nested,
@@ -169,6 +181,7 @@ problem_generators = {
 	'loggammaI_multimodal': lambda ndim: problems.loggamma.create_problem_loggammaI_multimodal(ndim=ndim, problem_name='loggammaI_multimodal%dd' % ndim),
 	'gauss': lambda ndim: problems.gauss.create_problem_gauss(ndim=ndim, problem_name='gauss%dd' % ndim),
 	'shell': lambda ndim: problems.gauss.create_problem_shell(ndim=ndim, problem_name='shell%dd' % ndim),
+	'thinshell': lambda ndim: problems.gauss.create_problem_shell(ndim=ndim, problem_name='shell%dd-thin' % ndim, width=[0.001/12*16./ndim]*2),
 	#'multigauss': lambda ndim: problems.gauss.create_problem_shell(ndim=ndim, problem_name='multigauss%dd' % ndim),
 }
 
@@ -179,9 +192,10 @@ maxlogdim = int(sys.argv[2])
 # run the algorithm for d=1,2,4,etc.
 # on a single problem
 dims = []
-for i in range(7):
-	if i < maxlogdim:
-		dims.append(2**i)
+for i in range(10):
+	if i > maxlogdim:
+		break
+	dims.append(2**i)
 	#if i > 0:
 	#	dims.append(int(round(2**(i*0.5))))
 	#dims.append(2**i+1)
@@ -250,6 +264,7 @@ for i, algorithm_generator in list(enumerate(algorithms_generators)): #[::-1]:
 			break
 		if result['neval'] > 20e6:
 			# already using a lot of evaluations, lets not go further
+			print 'already using a lot of evaluations, lets not go further'
 			break
 	if len(dims_selected) == 0: continue
 	plt.subplot(2, 1, 1)

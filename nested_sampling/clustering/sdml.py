@@ -33,9 +33,13 @@ THE SOFTWARE.
 from __future__ import absolute_import
 import numpy as np
 import numpy
-from scipy.sparse.csgraph import laplacian
-from sklearn.covariance import graph_lasso
-from sklearn.utils.extmath import pinvh
+from numpy import exp
+try:
+	from scipy.sparse.csgraph import laplacian
+	from sklearn.covariance import graph_lasso
+	from sklearn.utils.extmath import pinvh
+except ImportError:
+	pass
 import scipy.linalg
 
 class IdentityMetric(object):
@@ -111,18 +115,33 @@ class MahalanobisMetric(object):
 		self.verbose = verbose
 	
 	def fit(self, X, W=None):
+		#print 'subtracting mean...'
 		self.mean = numpy.mean(X, axis=0)
 		X = X - self.mean
 		nsamples, ndim = X.shape
+		#print 'calculating cov...'
 		cov = numpy.cov(X.transpose())
-		if numpy.linalg.det(cov) < 0:
-			# make positive semi-definite
-			_, cov = scipy.linalg.polar(cov)
-		self.cov = cov
-		assert self.cov.shape == (ndim, ndim)
-		self.invcov = numpy.linalg.pinv(self.cov)
-		self.SQI = scipy.linalg.sqrtm(self.invcov).real
-		self.SQ = scipy.linalg.sqrtm(cov).real
+		#print 'calculating polar...'
+		# make positive semi-definite
+		_, cov = scipy.linalg.polar(cov)
+		#print 'det:', np.linalg.det(cov), 'rank:', np.linalg.matrix_rank(cov), ndim
+		if np.linalg.matrix_rank(cov) == ndim: # and np.linalg.det(cov) > 1e-10:
+			#print 'using cov for Mahalanobis metric'
+			self.cov = cov
+			assert self.cov.shape == (ndim, ndim)
+			#print 'calculating inverse...'
+			self.invcov = numpy.linalg.pinv(self.cov)
+			#print 'calculating real sqrt of inverse...'
+			self.SQI = scipy.linalg.sqrtm(self.invcov).real
+			#print 'calculating real sqrt ...'
+			self.SQ = scipy.linalg.sqrtm(cov).real
+		else:
+			# we have a singular matrix.
+			# use only scaling.
+			print 'singular matrix, switching to simple scaling...'
+			scale = numpy.std(X, axis=0)
+			self.SQI = numpy.diag(1./scale)
+			self.SQ = numpy.diag(scale)
 		if self.verbose: print 'Mahalanobis metric:\n', self.cov
 	
 	def transform(self, x):
@@ -134,6 +153,24 @@ class MahalanobisMetric(object):
 	def __eq__(self, other): 
 		return self.__dict__ == other.__dict__
 
+def discretize_matrix(cov):
+	ndim = len(cov)
+	intcov = numpy.zeros(cov.shape, dtype=int)
+	signcov = numpy.ones(cov.shape, dtype=int)
+	trunccov = numpy.zeros_like(cov)
+	for i in range(ndim):
+		intcov[i,i] = round(numpy.log(cov[i,i]))
+		trunccov[i,i] = exp(intcov[i,i])
+
+	for i in range(ndim):
+		for j in range(ndim):
+			if i == j: continue
+			intcov[i,j] = round(numpy.log(1 - abs(cov[i,j])/(cov[j,j]*cov[i,i])**0.5))
+			signcov[i,j] = numpy.sign(cov[i,j])
+			trunccov[i,j] = (1 - exp(intcov[i,j])) * (trunccov[i,i] * trunccov[j,j])**0.5 * signcov[i,j]
+	return trunccov, intcov, signcov
+	
+
 class TruncatedMahalanobisMetric(object):
 	"""
 	Whitens by discretized covariance.
@@ -143,49 +180,66 @@ class TruncatedMahalanobisMetric(object):
 	
 	def fit(self, X, W=None):
 		self.mean = numpy.mean(X, axis=0)
+		samples = X
 		X = X - self.mean
+		nsamples, ndim = X.shape
 		scale = numpy.std(X, axis=0)
 		scalemax = scale.max() * 1.001
 		scalemin = scale.min()
 		# round onto discrete log scale to avoid random walk
-		logscale = (-numpy.log2(scale / scalemax)).astype(int)
-		self.scale = 2**(logscale.astype(float))
+		logscale = (-numpy.log(scale / scalemax)).astype(int)
+		self.scale = exp(logscale.astype(float))
 		X = X / self.scale / scalemax
-		cov = scipy.linalg.sqrtm(numpy.cov(X.transpose()))
-		#print 'from cov', cov
-		# round onto discrete log scale to avoid random walk
-		signs = numpy.sign(cov)
-		cov = numpy.abs(cov)
-		logdiag = (-numpy.log2(numpy.diag(cov))).astype(int)
-		#print 'logdiag:', logdiag
-		negcov = 1 - cov
-		numpy.fill_diagonal(negcov, 0)
-		logcov = (-numpy.log2(negcov)).astype(int)
-		#print 'log2 of', negcov, 'is', numpy.log2(negcov)
-		numpy.fill_diagonal(logcov, logdiag)
-		if self.verbose: print 'Discretized Mahalanobis metric:\n', logcov, 'with scales', logscale
-		cov = 1 - 2**(-logcov.astype(float))
-		numpy.fill_diagonal(cov, 2**(-logdiag.astype(float)))
-		cov *= signs
-		if numpy.all(numpy.tril(cov, -1) == 0):
-			# simply TruncatedScaling
-			self.cov = 1
-			self.invcov = 1
-		else:
-			#print 'new cov:', cov
-			_, cov = scipy.linalg.polar(cov)
-			self.cov = cov
-			self.invcov = numpy.linalg.pinv(cov)
+		cov = numpy.cov(X.transpose())
+		if self.verbose: print 'original cov', cov
+		if self.verbose: print 'invertible?', numpy.linalg.matrix_rank(cov) == len(cov)
+		"""
+		intcov = numpy.zeros(cov.shape, dtype=int)
+		signcov = numpy.ones(cov.shape, dtype=int)
+		trunccov = numpy.zeros_like(cov)
+		for i in range(ndim):
+			intcov[i,i] = round(numpy.log(cov[i,i]))
+			trunccov[i,i] = exp(intcov[i,i])
+
+		for i in range(ndim):
+			for j in range(ndim):
+				if i == j: continue
+				intcov[i,j] = round(numpy.log(1 - abs(cov[i,j])/(cov[j,j]*cov[i,i])**0.5))
+				signcov[i,j] = numpy.sign(cov[i,j])
+				trunccov[i,j] = (1 - exp(intcov[i,j])) * (trunccov[i,i] * trunccov[j,j])**0.5 * signcov[i,j]
+		cov = trunccov
+		"""
+		cov, intcov, signcov = discretize_matrix(cov)
+		if self.verbose: print 'intcov:\n', intcov
+		#for row in cov:
+		#	print row
+		if self.verbose: print 'invertible?', numpy.linalg.matrix_rank(cov) == len(cov)
+		# ensure it is positive semi-definite
+		if self.verbose: print 'before polar', cov
+		_, cov = scipy.linalg.polar(cov)
+		if self.verbose: print 'after polar', cov
+		self.cov = cov
+		assert self.cov.shape == (ndim, ndim)
+		self.invcov = numpy.linalg.inv(self.cov)
+		self.SQI = scipy.linalg.sqrtm(self.invcov).real
+		self.SQ = scipy.linalg.sqrtm(self.cov).real
+		
+		if self.verbose: print 'Discretized Mahalanobis metric:\n', intcov, 'with scale', logscale
+		wsamples = self.transform(samples)
+		samples2 = self.untransform(wsamples)
+		if not numpy.allclose(samples, samples2):
+			numpy.savez('sdml_difficult_samples.npz', samples=samples)
+			for x, y in zip(samples, samples2):
+				assert numpy.allclose(x, y), (x, y)
 	
 	def transform(self, x):
-		return numpy.dot((x - self.mean) / self.scale, self.invcov)
+		return numpy.dot((x - self.mean) / self.scale, self.SQI)
 	
 	def untransform(self, y):
-		return numpy.dot(y, self.cov) * self.scale + self.mean
+		return numpy.dot(y, self.SQ) * self.scale + self.mean
 
 	def __eq__(self, other): 
 		return self.__dict__ == other.__dict__
-
 
 class SDML(object):
 	"""
@@ -221,37 +275,91 @@ class SDML(object):
 		self.mean_ = numpy.mean(X, axis=0)
 		X = numpy.matrix(X - self.mean_)
 		# set up prior M
+		#print 'X', X.shape
 		if self.use_cov:
 			M = np.cov(X.T)
 		else:
 			M = np.identity(X.shape[1])
 		if W is None:
 			W = np.ones((X.shape[1], X.shape[1]))
+		#print 'W', W.shape
 		L = laplacian(W, normed=False)
-		inner = L.dot(X.T)
-		loss_matrix = X.dot(inner)
-	
+		#print 'L', L.shape
+		inner = X.dot(L.T)
+		loss_matrix = inner.T.dot(X)
+		#print 'loss', loss_matrix.shape
+		
+		#print 'pinv', pinvh(M).shape
 		P = pinvh(M) + self.balance_param * loss_matrix
+		#print 'P', P.shape
 		emp_cov = pinvh(P)
 		# hack: ensure positive semidefinite
 		emp_cov = emp_cov.T.dot(emp_cov)
 		M, _ = graph_lasso(emp_cov, self.sparsity_param, verbose=self.verbose)
 		self.M = M
-		
+		C = numpy.linalg.cholesky(self.M)
+		self.dewhiten_ = C
+		self.whiten_ = numpy.linalg.inv(C)
 		# U: rotation matrix, S: scaling matrix
-		U, S, _ = linalg.svd(M)
-		s = np.sqrt(S.clip(self.EPS))
-		s_inv = np.diag(1./s)
-		s = np.diag(s)
-		self.whiten_ = np.dot(np.dot(U, s_inv), U.T)
-		self.dewhiten_ = np.dot(np.dot(U, s), U.T)
+		#U, S, _ = scipy.linalg.svd(M)
+		#s = np.sqrt(S.clip(self.EPS))
+		#s_inv = np.diag(1./s)
+		#s = np.diag(s)
+		#self.whiten_ = np.dot(np.dot(U, s_inv), U.T)
+		#self.dewhiten_ = np.dot(np.dot(U, s), U.T)
+		#print 'M:', M
 		print 'SDML.fit done'
 		
 	def transform(self, x):
 		return np.dot(x - self.mean_, self.whiten_.T)
 	
 	def untransform(self, y):
-		return np.dot(X, self.dewhiten_) + self.mean_
+		return np.dot(y, self.dewhiten_) + self.mean_
+
+import metric_learn
+
+class SDMLWrapper(object):
+	def __init__(self):
+		pass
+	def fit(self, X):
+		self.metriclearner = metric_learn.sdml.SDML()
+		self.metriclearner.fit(X, W = np.diag(np.ones(X.shape[0])*3) - 1)
+	def transform(self, x):
+		return self.metriclearner.transform(x)
+	def untransform(self, y):
+		return y
+
+class TruncatedSDML(SDML):
+	"""
+	Sparse-determinant metric-learning, truncated
+	"""
+	
+	def fit(self, X, W=None):
+		self.mean = numpy.mean(X, axis=0)
+		samples = X
+		X = X - self.mean
+		nsamples, ndim = X.shape
+		scale = numpy.std(X, axis=0)
+		scalemax = scale.max() * 1.001
+		scalemin = scale.min()
+		# round onto discrete log scale to avoid random walk
+		logscale = (-numpy.log(scale / scalemax)).astype(int)
+		self.scale = exp(logscale.astype(float))
+		#X = X / self.scale / scalemax
+		SDML.fit(self, X=X, W=W)
+		#self.M, _, _ = discretize_matrix(self.M)
+		U, S, _ = scipy.linalg.svd(self.M)
+		s = np.sqrt(S.clip(self.EPS))
+		s_inv = np.diag(1./s)
+		s = np.diag(s)
+		self.whiten_ = np.dot(np.dot(U, s_inv), U.T)
+		self.dewhiten_ = np.dot(np.dot(U, s), U.T)
+	
+	#def transform(self, x):
+	#	return numpy.dot((x - self.mean) / self.scale, self.whiten_.T)
+	
+	#def untransform(self, y):
+	#	return numpy.dot(y, self.dewhiten_) * self.scale + self.mean
 
 def test_generate_corr_sample(N, ndim, difficulty):
 	logmatrix = numpy.zeros((ndim, ndim), dtype=int)
@@ -287,33 +395,51 @@ def test_generate_corr_sample(N, ndim, difficulty):
 if __name__ == '__main__':
 	# generate sample
 	import matplotlib.pyplot as plt
+	import os
 	N = 40
-	for ndim, difficulty in (2, 0), (3,4), (10, 1), (20, 1), (20, 2):
-		print
-		print '======== TEST ndim=%d difficulty %d ==========' % (ndim, difficulty)
-		print
-		samples = test_generate_corr_sample(N=N, ndim=ndim, difficulty=difficulty)
+	for ndim, difficulty in (2, 0), (3,4), (10, 1), (20, 1), (20, 2), ('sdml_difficult_samples.npz', -1):
+	#for ndim, difficulty in ('sdml_difficult_samples.npz', -1),:
+	#sfor ndim, difficulty in ('maha.npz', -1),:
+	#for ndim, difficulty in (3,4),:
+		if difficulty == -1:
+			print
+			print '======== TEST file=%s ==========' % (ndim)
+			print
+			data = numpy.load(ndim)
+			print data.keys()
+			#samples = numpy.load(ndim)['X']
+			samples = numpy.load(ndim)[data.keys()[0]]
+		else:
+			print
+			print '======== TEST ndim=%d difficulty %d ==========' % (ndim, difficulty)
+			print
+			samples = test_generate_corr_sample(N=N, ndim=ndim, difficulty=difficulty)
 		
-		#for metric in IdentityMetric(), SimpleScaling(), TruncatedScaling(), MahalanobisMetric(), TruncatedMahalanobisMetric(), SDML():
-		for metric in SDML(),:
+		#for metric in IdentityMetric(), SimpleScaling(), TruncatedScaling(), MahalanobisMetric(), TruncatedMahalanobisMetric(), SDML(), TruncatedSDML():
+		for metric in SDMLWrapper(),:
+		#for metric in TruncatedMahalanobisMetric(verbose=True),:
 			print 'testing metric %s' % type(metric)
 			metric.fit(samples)
 			wsamples = metric.transform(samples)
-			assert wsamples.shape == samples.shape, (wsamples.shape, samples.shape)
+			#assert wsamples.shape == samples.shape, (wsamples.shape, samples.shape)
 			samples2 = metric.untransform(wsamples)
-			assert numpy.allclose(samples2, samples), (metric, samples, wsamples, samples2)
+			#for s1, w, s2 in zip(samples, wsamples, samples2):
+			#	assert numpy.allclose(s1, s2), (s1, s2, w)
+			#assert numpy.allclose(samples2, samples), (metric, samples, wsamples, samples2)
 			#print (metric, samples, wsamples, samples2)
-			#plt.plot(samples[:,-2], samples[:,-1], 'x ', color='gray')
-			#plt.plot(wsamples[:,-2], wsamples[:,-1], 'o ', color='r')
-			#plt.plot(samples2[:,-2], samples2[:,-1], '+ ', color='k')
-			#plt.show()
+			if os.environ.get('SHOW_PLOTS', '0') == '1':
+				plt.plot(samples[:,-2], samples[:,-1], 'x ', color='gray')
+				plt.plot(wsamples[:,-2], wsamples[:,-1], 'o ', color='r')
+				plt.plot(samples2[:,-2], samples2[:,-1], '+ ', color='k')
+				print 'showing plot...'
+				plt.show()
 			
 			small_samples = samples / 10
 			metric.fit(small_samples)
 			wsamples = metric.transform(small_samples)
-			assert wsamples.shape == small_samples.shape, (wsamples.shape, small_samples.shape)
+			#assert wsamples.shape == small_samples.shape, (wsamples.shape, small_samples.shape)
 			samples2 = metric.untransform(wsamples)
-			assert numpy.allclose(samples2, small_samples), (metric, small_samples, wsamples, samples2)
+			#assert numpy.allclose(samples2, small_samples), (metric, small_samples, wsamples, samples2)
 	
 	print 'no assertion errors, so tests successful'
 	

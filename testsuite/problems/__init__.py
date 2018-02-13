@@ -50,6 +50,7 @@ problems = [
 	loggamma.create_problem_ffunnel(ndim=2, problem_name='ffunnel2d-5', difficulty=5),
 	loggamma.create_problem_ffunnel(ndim=5, problem_name='ffunnel5d-3', difficulty=3),
 	loggamma.create_problem_ffunnel(ndim=5, problem_name='ffunnel5d-5', difficulty=5),
+	loggamma.create_problem_ffunnel(ndim=10, problem_name='ffunnel10d-3', difficulty=3),
 	loggamma.create_problem_ffunnel(ndim=10, problem_name='ffunnel10d-5', difficulty=5),
 	#real.exvar.create_problem_exvar(ndim=5, problem_name='exvar5d'),
 	real.bexvar.create_problem_bexvar(ndim=10, problem_name='bexvar10d', variance=1),

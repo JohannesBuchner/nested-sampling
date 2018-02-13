@@ -22,6 +22,7 @@ import nested_sampling.samplers.hybrid
 import matplotlib.pyplot as plt
 from nested_sampling.postprocess import equal_weighted_posterior, marginal_plots
 import time
+from nested_sampling.termination_criteria import TerminationCriterion, MaxErrorCriterion, BootstrappedCriterion, RememberingBootstrappedCriterion, DecliningBootstrappedCriterion, NoisyBootstrappedCriterion, NoiseDetectingBootstrappedCriterion
 
 def run_nested(**config):
 	ndim = config['ndim']
@@ -48,11 +49,12 @@ def run_nested(**config):
 	elif method.startswith('radfriends'): # radial distance
 		constrainer = FriendsConstrainer(rebuild_every=nlive_points, radial=True, metric = 'euclidean', jackknife=config['jackknife'], force_shrink=config['force_shrink'], keep_phantom_points=config.get('keep_phantom_points', False), optimize_phantom_points=config.get('optimize_phantom_points', False), verbose=False)
 	elif method.startswith('mlfriends'): # metric-learning distance
-		constrainer = MetricLearningFriendsConstrainer(rebuild_every=nlive_points, 
+		constrainer = MetricLearningFriendsConstrainer( 
 			metriclearner=config['metriclearner'],
 			keep_phantom_points=config.get('keep_phantom_points', False), 
 			optimize_phantom_points=config.get('optimize_phantom_points', False), 
 			force_shrink=config['force_shrink'], 
+			rebuild_every=config.get('rebuild_every', nlive_points), 
 			verbose=False)
 	elif method.startswith('hradfriends'): # radial distance
 		friends_filter = FriendsConstrainer(rebuild_every=nlive_points, radial=True, metric = 'euclidean', jackknife=config['jackknife'], force_shrink=config['force_shrink'], keep_phantom_points=config.get('keep_phantom_points', False), optimize_phantom_points=config.get('optimize_phantom_points', False), verbose=False)
@@ -72,8 +74,12 @@ def run_nested(**config):
 			proposer = nested_sampling.samplers.hybrid.FilteredEllipticalSliceProposal()
 		else:
 			assert False, config['proposer']
-		filtered_mcmc = nested_sampling.samplers.hybrid.FilteredMCMCConstrainer(proposer=proposer, 
-			nsteps=config['nsteps'], nminaccepts=config.get('nminaccepts', 0))
+		if config['nsteps'] < 0:
+			filtered_mcmc = nested_sampling.samplers.hybrid.FilteredVarlengthMCMCConstrainer(proposer=proposer, 
+				nsteps_initial=-config['nsteps'])
+		else:
+			filtered_mcmc = nested_sampling.samplers.hybrid.FilteredMCMCConstrainer(proposer=proposer, 
+				nsteps=config['nsteps'], nminaccepts=config.get('nminaccepts', 0))
 		constrainer = nested_sampling.samplers.hybrid.HybridFriendsConstrainer(friends_filter, filtered_mcmc, 
 			switchover_efficiency=config.get('switchover_efficiency', 0))
 	elif method.startswith('hmlfriends'): # radial distance
@@ -97,8 +103,12 @@ def run_nested(**config):
 			proposer = nested_sampling.samplers.hybrid.FilteredEllipticalSliceProposal()
 		else:
 			assert False, config['proposer']
-		filtered_mcmc = nested_sampling.samplers.hybrid.FilteredMCMCConstrainer(proposer=proposer, 
-			nsteps=config['nsteps'], nminaccepts=config.get('nminaccepts', 0))
+		if config['nsteps'] < 0:
+			filtered_mcmc = nested_sampling.samplers.hybrid.FilteredVarlengthMCMCConstrainer(proposer=proposer, 
+				nsteps_initial=-config['nsteps'])
+		else:
+			filtered_mcmc = nested_sampling.samplers.hybrid.FilteredMCMCConstrainer(proposer=proposer, 
+				nsteps=config['nsteps'], nminaccepts=config.get('nminaccepts', 0))
 		constrainer = nested_sampling.samplers.hybrid.HybridMLFriendsConstrainer(friends_filter, filtered_mcmc, 
 			switchover_efficiency=config.get('switchover_efficiency', 0), 
 			unfiltered=config.get('unfiltered', False))
@@ -121,8 +131,12 @@ def run_nested(**config):
 			proposer = nested_sampling.samplers.hybrid.FilteredEllipticalSliceProposal()
 		else:
 			assert False, config['proposer']
-		filtered_mcmc = nested_sampling.samplers.hybrid.FilteredMCMCConstrainer(proposer=proposer, 
-			nsteps=config['nsteps'], nminaccepts=config.get('nminaccepts', 0))
+		if config['nsteps'] < 0:
+			filtered_mcmc = nested_sampling.samplers.hybrid.FilteredVarlengthMCMCConstrainer(proposer=proposer, 
+				nsteps_initial=-config['nsteps'])
+		else:
+			filtered_mcmc = nested_sampling.samplers.hybrid.FilteredMCMCConstrainer(proposer=proposer, 
+				nsteps=config['nsteps'], nminaccepts=config.get('nminaccepts', 0))
 		constrainer = nested_sampling.samplers.hybrid.HybridMultiEllipsoidConstrainer(filtered_mcmc, enlarge=config.get('enlarge', 1.2), 
 			switchover_efficiency=config.get('switchover_efficiency', 0))
 	elif method.startswith('hmlmultiellipsoid'): # multi-ellipsoid
@@ -144,8 +158,12 @@ def run_nested(**config):
 			proposer = nested_sampling.samplers.hybrid.FilteredEllipticalSliceProposal()
 		else:
 			assert False, config['proposer']
-		filtered_mcmc = nested_sampling.samplers.hybrid.FilteredMCMCConstrainer(proposer=proposer, 
-			nsteps=config['nsteps'], nminaccepts=config.get('nminaccepts', 0))
+		if config['nsteps'] < 0:
+			filtered_mcmc = nested_sampling.samplers.hybrid.FilteredVarlengthMCMCConstrainer(proposer=proposer, 
+				nsteps_initial=-config['nsteps'])
+		else:
+			filtered_mcmc = nested_sampling.samplers.hybrid.FilteredMCMCConstrainer(proposer=proposer, 
+				nsteps=config['nsteps'], nminaccepts=config.get('nminaccepts', 0))
 		constrainer = nested_sampling.samplers.hybrid.HybridMLMultiEllipsoidConstrainer(filtered_mcmc, 
 			metriclearner=config['metriclearner'], 
 			switchover_efficiency=config.get('switchover_efficiency', 0),
@@ -180,6 +198,61 @@ def run_nested(**config):
 		constrainer = MCMCConstrainer(proposer = proposer, nsteps=config['nsteps'], nminaccepts=config.get('nminaccepts', 0))
 	else:
 		raise NotImplementedError('draw_method "%s" not implemented' % method)
+
+	print 'configuring TerminationCriterion'
+	if config.get('unlimited_sampling', False):
+		max_samples = None
+	else:
+		max_samples = 2000000
+	
+	if config['integrator'] == 'normal':
+		termination = TerminationCriterion(tolerance=0.5)
+	elif config['integrator'] == 'normal-max':
+		termination = MaxErrorCriterion(tolerance=0.5)
+	elif config['integrator'] == 'normal-verysmall':
+		termination = TerminationCriterion(tolerance=0.5, maxRemainderFraction=0.001)
+	elif config['integrator'] == 'normal-bs':
+		termination = BootstrappedCriterion(tolerance=0.5)
+		#result = nested_integrator(tolerance=0.5, sampler=sampler, max_samples=max_samples, need_small_remainder=False, need_robust_remainder_error=True)
+	elif config['integrator'] == 'normal+bs2':
+		termination = BootstrappedCriterion(tolerance=0.5, maxRemainderFraction=0.5)
+	elif config['integrator'] == 'normal+bs3':
+		termination = BootstrappedCriterion(tolerance=0.5, maxRemainderFraction=1/3.)
+	elif config['integrator'] == 'normal+bs10':
+		termination = BootstrappedCriterion(tolerance=0.5, maxRemainderFraction=1/10.)
+	elif config['integrator'] == 'normal-rbs3':
+		termination = RememberingBootstrappedCriterion(tolerance=0.5, memory_length=3)
+	elif config['integrator'] == 'normal-rbs5':
+		termination = RememberingBootstrappedCriterion(tolerance=0.5, memory_length=5)
+	elif config['integrator'] == 'normal+rbs32':
+		termination = RememberingBootstrappedCriterion(tolerance=0.5, memory_length=3, maxRemainderFraction=0.5)
+	elif config['integrator'] == 'normal-dbs11':
+		termination = DecliningBootstrappedCriterion(tolerance=0.5, required_decrease=1., required_decrease_scatter=1.)
+	elif config['integrator'] == 'normal-dbs22':
+		termination = DecliningBootstrappedCriterion(tolerance=0.5, required_decrease=0.5, required_decrease_scatter=0.5)
+	#elif config['integrator'] == 'normal-dbs31':
+	#	termination = DecliningBootstrappedCriterion(tolerance=0.5, required_decrease=1./3., required_decrease_scatter=1.)
+	elif config['integrator'] == 'normal-dbs33':
+		termination = DecliningBootstrappedCriterion(tolerance=0.5, required_decrease=1./3., required_decrease_scatter=1./3.)
+	elif config['integrator'] == 'normal-dbs03':
+		termination = DecliningBootstrappedCriterion(tolerance=0.5, required_decrease=0., required_decrease_scatter=1./3.)
+	elif config['integrator'] == 'normal-dbs01':
+		termination = DecliningBootstrappedCriterion(tolerance=0.5, required_decrease=0., required_decrease_scatter=1.)
+	elif config['integrator'] == 'normal-dbs10':
+		termination = DecliningBootstrappedCriterion(tolerance=0.5, required_decrease=1., required_decrease_scatter=0.)
+	elif config['integrator'] == 'normal-nbs':
+		termination = NoisyBootstrappedCriterion(tolerance=0.5)
+	elif config['integrator'] == 'normal-cnbs':
+		termination = NoisyBootstrappedCriterion(tolerance=0.5, conservative=True)
+	elif config['integrator'] == 'normal-ndbs10':
+		termination = NoiseDetectingBootstrappedCriterion(tolerance=0.5, maxNoisyRemainder=0.1)
+	elif config['integrator'] == 'normal-ndbs100':
+		termination = NoiseDetectingBootstrappedCriterion(tolerance=0.5, maxNoisyRemainder=0.01)
+	else:
+		assert config['integrator'] == 'normal', config['integrator']
+	# only record for the first seed
+	termination.plot = config.get('seed', 0) == 0
+	
 	print 'configuring NestedSampler'
 	starttime = time.time()
 	if hasattr(constrainer, 'get_Lmax'):
@@ -192,31 +265,26 @@ def run_nested(**config):
 		constrainer_get_Lmax = constrainer_get_Lmax)
 	constrainer.sampler = sampler
 	print 'running nested_integrator to tolerance 0.5'
-	if config.get('unlimited_sampling', False):
-		max_samples = None
-	else:
-		max_samples = 2000000
-	if config['integrator'] == 'normal':
-		result = nested_integrator(tolerance=0.5, sampler=sampler, max_samples=max_samples)
-	elif config['integrator'] == 'normal-verysmall':
-		result = nested_integrator(tolerance=0.5, sampler=sampler, max_samples=max_samples, need_small_remainder=True, max_remainder=0.001)
-	elif config['integrator'] == 'normal-bs':
-		result = nested_integrator(tolerance=0.5, sampler=sampler, max_samples=max_samples, need_small_remainder=False, need_robust_remainder_error=True)
-	else:
-		assert config['integrator'] == 'normal', config['integrator']
+	result = nested_integrator(sampler=sampler, max_samples=max_samples, terminationcriterion=termination)
+
 	endtime = time.time()
 	if hasattr(constrainer, 'stats'):
 		constrainer.stats()
 
 	output_basename = config['output_basename']
+	#numpy.savetxt(output_basename + 'convergencetests.txt.gz', result['convergence_tests'])
 	
 	if config.get('seed', 0) == 0:
+		# drawn samples
+		print 'plotting drawn samples...'
 		x = numpy.array([x for _, x, _ in sampler.samples])
 		y = exp([l for _, _, l in sampler.samples])
 		plt.plot(x[:,0], y, 'x', color='blue', ms=1)
 		plt.savefig(output_basename + 'nested_samples.pdf', bbox_inches='tight')
 		plt.close()
-
+		
+		# L vs V
+		print 'plotting V-L...'
 		L = numpy.array([L for _, _, L, _ in result['weights']])
 		width = numpy.array([w for _, _, _, w in result['weights']])
 		plt.plot(width, L, 'x-', color='blue', ms=1, label='Z=%.2f (%.2f)' % (
@@ -233,11 +301,39 @@ def run_nested(**config):
 		plt.legend(loc='best')
 		plt.savefig(output_basename + 'nested_integral.pdf', bbox_inches='tight')
 		plt.close()
-	
+		
+		# posteriors
+		print 'plotting posteriors...'
 		posterioru, posteriorx = equal_weighted_posterior(result['weights'])
 		plt.figure(figsize=(ndim*2, ndim*2))
 		marginal_plots(weights=result['weights'], ndim=ndim)
 		plt.savefig(output_basename + 'posterior.pdf', bbox_inches='tight')
+		plt.close()
+		
+		# plot convergence history
+		print 'plotting Z history...'
+		plt.figure()
+		plt.plot(termination.plotdata['normalZ'], label='NS')
+		plt.plot(termination.plotdata['remainderZ'], label='remainder')
+		plt.plot(termination.plotdata['totalZ'], label='total')
+		hi = max(termination.plotdata['totalZ'])
+		plt.ylim(hi - 10, hi + 0.1)
+		plt.legend(loc='best', prop=dict(size=8))
+		plt.savefig(output_basename + 'convergence_Z.pdf', bbox_inches='tight')
+		plt.close()
+
+		print 'plotting convergence history...'
+		plt.figure()
+		plt.plot(termination.plotdata['normalZerr'], label='NS')
+		plt.plot(termination.plotdata['remainderZerr'], label='remainder')
+		plt.plot(termination.plotdata['totalZerr'], label='total')
+		if 'memory_sigma' in termination.plotdata:
+			plt.plot(termination.plotdata['memory_sigma'], label='memory_sigma')
+		if 'classic_totalZerr' in termination.plotdata:
+			plt.plot(termination.plotdata['classic_totalZerr'], label='classic_totalZerr')
+		plt.ylim(0, 2)
+		plt.legend(loc='best', prop=dict(size=8))
+		plt.savefig(output_basename + 'convergence_Zerr.pdf', bbox_inches='tight')
 		plt.close()
 
 	return dict(
@@ -263,6 +359,8 @@ configs = [
 		#dict(draw_method='mlfriends-optphantoms', metriclearner='simplescaling', keep_phantom_points=True, optimize_phantom_points=True, force_shrink=True),
 		#dict(draw_method='mlfriendsT', metriclearner='truncatedscaling', force_shrink=True),
 		dict(draw_method='mlfriendsTM', metriclearner='truncatedmahalanobis', force_shrink=True),
+		#dict(draw_method='mlfriendsTMR', metriclearner='truncatedmahalanobis', force_shrink=False, rebuild_every=10),
+		#dict(draw_method='mlfriendsTSDML', metriclearner='truncatedsdml', force_shrink=True),
 		#dict(draw_method='mlfriendsT-phantoms', metriclearner='truncatedscaling', keep_phantom_points=True, force_shrink=True),
 		#dict(draw_method='mlfriendsT-optphantoms', metriclearner='truncatedscaling', keep_phantom_points=True, optimize_phantom_points=True, force_shrink=True),
 		#dict(draw_method='mlfriends-phantoms', metriclearner='simplescaling', keep_phantom_points=True),
@@ -319,8 +417,11 @@ configs = [
 		#dict(draw_method='hmultiellipsoidBS-harm+1steps', proposer = 'harm', nsteps=1, nminaccepts=1),
 		#dict(draw_method='hmlmultiellipsoidBS-harm+2steps', metriclearner='simplescaling', proposer = 'harm', nsteps=2, nminaccepts=2, bs_enabled=True),
 		#dict(draw_method='hmlmultiellipsoidBS-harm+1steps', metriclearner='simplescaling', proposer = 'harm', nsteps=1, nminaccepts=1, bs_enabled=True),
-		#dict(draw_method='hmlmultiellipsoidBSM-harm+1steps', metriclearner='mahalanobis', proposer = 'harm', nsteps=1, nminaccepts=1, bs_enabled=True),
-		#dict(draw_method='hmlmultiellipsoidBSM-harm+2steps', metriclearner='mahalanobis', proposer = 'harm', nsteps=2, nminaccepts=2, bs_enabled=True),
+		dict(draw_method='hmlmultiellipsoidBSM-harm+1steps', metriclearner='mahalanobis', proposer = 'harm', nsteps=1, nminaccepts=1, bs_enabled=True),
+		dict(draw_method='hmlmultiellipsoidBSM-harm+2steps', metriclearner='mahalanobis', proposer = 'harm', nsteps=2, nminaccepts=2, bs_enabled=True),
+		#dict(draw_method='hmlmultiellipsoidBSSDML-harm+1steps', metriclearner='sdml', proposer = 'harm', nsteps=1, nminaccepts=1, bs_enabled=True),
+		#dict(draw_method='hmlmultiellipsoidBSSDML-harm+2steps', metriclearner='sdml', proposer = 'harm', nsteps=2, nminaccepts=2, bs_enabled=True),
+		#dict(draw_method='hmlmultiellipsoidBSM-harm+varsteps', metriclearner='mahalanobis', proposer = 'harm', nsteps=-2, bs_enabled=True),
 		#dict(draw_method='hmlmultiellipsoidBSM-harm+5steps', metriclearner='mahalanobis', proposer = 'harm', nsteps=5, nminaccepts=5, bs_enabled=True),
 		#dict(draw_method='hmlmultiellipsoidBSM-ess+1steps', metriclearner='mahalanobis', proposer = 'ess', nsteps=1, nminaccepts=1, bs_enabled=True),
 		#dict(draw_method='hmlmultiellipsoidBSM-ess+2steps', metriclearner='mahalanobis', proposer = 'ess', nsteps=2, nminaccepts=2, bs_enabled=True),
@@ -345,7 +446,14 @@ configs = [
 		#dict(draw_method='hmlfriendsT-ptharm+5steps-phantoms', metriclearner='truncatedscaling', proposer = 'ptharm', nsteps=5, nminaccepts=5, keep_phantom_points=True, force_shrink=True),
 		dict(draw_method='hmlfriendsTM-harm+1steps', metriclearner='truncatedmahalanobis', proposer = 'harm', nsteps=1, nminaccepts=1, keep_phantom_points=False, optimize_phantom_points=False, force_shrink=True),
 		dict(draw_method='hmlfriendsTM-harm+2steps', metriclearner='truncatedmahalanobis', proposer = 'harm', nsteps=2, nminaccepts=2, keep_phantom_points=False, optimize_phantom_points=False, force_shrink=True),
+		#dict(draw_method='hmlfriendsTSDML-harm+1steps', metriclearner='truncatedsdml', proposer = 'harm', nsteps=1, nminaccepts=1, keep_phantom_points=False, optimize_phantom_points=False, force_shrink=True),
+		#dict(draw_method='hmlfriendsTSDML-harm+2steps', metriclearner='truncatedsdml', proposer = 'harm', nsteps=2, nminaccepts=2, keep_phantom_points=False, optimize_phantom_points=False, force_shrink=True),
+		#dict(draw_method='hmlfriendsTM-harm+varsteps', metriclearner='truncatedmahalanobis', proposer = 'harm', nsteps=-2, keep_phantom_points=False, optimize_phantom_points=False, force_shrink=True),
 		#dict(draw_method='hmlfriendsTM-harm+5steps', metriclearner='truncatedmahalanobis', proposer = 'harm', nsteps=5, nminaccepts=5, keep_phantom_points=False, optimize_phantom_points=False, force_shrink=True),
+		#dict(draw_method='hmlfriendsTM-ptharm+1steps', metriclearner='truncatedmahalanobis', proposer = 'ptharm', nsteps=1, nminaccepts=1, keep_phantom_points=False, optimize_phantom_points=False, force_shrink=True),
+		#dict(draw_method='hmlfriendsTM-mahharm+1steps', metriclearner='truncatedmahalanobis', proposer = 'mahharm', nsteps=1, nminaccepts=1, keep_phantom_points=False, optimize_phantom_points=False, force_shrink=True),
+		#dict(draw_method='hmlfriendsTM-mahharm+2steps', metriclearner='truncatedmahalanobis', proposer = 'mahharm', nsteps=2, nminaccepts=2, keep_phantom_points=False, optimize_phantom_points=False, force_shrink=True),
+		#dict(draw_method='hmlfriendsTM-ptharm+5steps', metriclearner='truncatedmahalanobis', proposer = 'ptharm', nsteps=5, nminaccepts=5, keep_phantom_points=False, optimize_phantom_points=False, force_shrink=True),
 		#dict(draw_method='hmlfriendsTM-ess+1steps', metriclearner='truncatedmahalanobis', proposer = 'ess', nsteps=1, nminaccepts=1, keep_phantom_points=False, optimize_phantom_points=False, force_shrink=True),
 		#dict(draw_method='hmlfriendsTM-ess+2steps', metriclearner='truncatedmahalanobis', proposer = 'ess', nsteps=2, nminaccepts=2, keep_phantom_points=False, optimize_phantom_points=False, force_shrink=True),
 
@@ -361,6 +469,22 @@ configs = [
 	], [
 		dict(integrator='normal'), 
 		dict(integrator='normal-bs'), 
+		#dict(integrator='normal+bs2'), 
+		#dict(integrator='normal+bs3'), 
+		dict(integrator='normal+bs10'), 
+		#dict(integrator='normal-rbs3'), 
+		#dict(integrator='normal-rbs5'), 
+		#dict(integrator='normal+rbs32'),
+		dict(integrator='normal-dbs11'),
+		dict(integrator='normal-dbs33'),
+		dict(integrator='normal-dbs03'),
+		dict(integrator='normal-dbs01'),
+		dict(integrator='normal-dbs10'),
+		dict(integrator='normal-nbs'),
+		dict(integrator='normal-cnbs'),
+		dict(integrator='normal-ndbs10'),
+		dict(integrator='normal-ndbs100'),
+		dict(integrator='normal-max'), 
 	]
 ]
 configs = [dict([[k, v] for d in config for k, v in d.iteritems()]) for config in itertools.product(*configs)]

@@ -33,6 +33,7 @@ class NestedSampler(object):
 			raise ArgumentError("either pass ndim or draw_global_uniform")
 			self.draw_global_uniform = draw_global_uniform
 		# draw N starting points from prior
+		#print 'drawing initial %d live points...' % nlive_points
 		live_pointsu = [None] * nlive_points
 		live_pointsx = [None] * nlive_points
 		live_pointsL = numpy.empty(nlive_points)
@@ -42,6 +43,7 @@ class NestedSampler(object):
 			L = loglikelihood(x)
 			live_pointsu[i], live_pointsx[i], live_pointsL[i] = u, x, L
 			self.samples.append([u, x, L])
+		#print 'drawing initial live points done.'
 		self.live_pointsu = live_pointsu
 		self.live_pointsx = live_pointsx
 		self.live_pointsL = live_pointsL

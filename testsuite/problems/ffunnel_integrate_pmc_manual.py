@@ -20,9 +20,9 @@ def loglikelihood(x):
 	like = -0.5 * (((numpy.abs(x[:,1:] - 0.5) + 10**-difficulty)/width)**2 + log(2*pi * width**2)).sum()
 	print like.shape
 	outside_mask = ~numpy.logical_and(x > 0, x < 1).any(axis=1)
-	if outside_mask.any():
-		like[outside_mask] = -numpy.inf
-	return like
+	#if outside_mask.any():
+	#	like[outside_mask] = -numpy.inf
+	return numpy.where(outside_mask, -numpy.inf, like)
 
 
 def loglikelihood_single(x):
@@ -54,7 +54,7 @@ mix = create_gaussian_mixture(means, covariances, weights)
 
 N = 40000
 sampler = pypmc.sampler.importance_sampling.ImportanceSampler(log_target, mix, prealloc=N)
-#print('importance sampling ...')
+print('importance sampling ...')
 #print('    drawing samples...')
 #samples = mix.propose(N, numpy.random)
 #print('    computing likelihood ...')
@@ -62,9 +62,45 @@ sampler = pypmc.sampler.importance_sampling.ImportanceSampler(log_target, mix, p
 #print('    computing weights...')
 #weights_proposal = numpy.array([mix.evaluate(sample) for sample in samples])
 #weights = exp(weights_target - weights_proposal)
-
 sampler.run(N)
 print('importance sampling done')
+
+weights = pypmc.sampler.importance_sampling.combine_weights([samples[:]      for samples in sampler.samples],
+                                                            [weights[:][:,0] for weights in sampler.weights],
+                                                            [mix]                                 )[:][:,0]
+samples = sampler.samples[:]
+
+integral_estimator = weights.sum() / len(weights)
+integral_uncertainty_estimator = np.sqrt((weights**2).sum() / len(weights) - integral_estimator**2) / np.sqrt(len(weights)-1)
+
+print('estimated  integral =', integral_estimator, '+-', integral_uncertainty_estimator)
+print('estimated ln of integral =', log(integral_estimator))
+print('effective sample size', pypmc.tools.convergence.ess(weights))
+
+print('importance sampling done')
+
+vb2 = pypmc.mix_adapt.variational.GaussianInference(sampler.samples[:],
+                                                    initial_guess=mix,
+                                                    weights=sampler.weights[:][:,0])
+
+# Note: This time we leave "prune" at the default value "1" because we
+#       want to keep all components that are expected to contribute
+#       with at least one effective sample per importance sampling run.
+print('running variational Bayes ...')
+vb2.run(1000, rel_tol=1e-8, abs_tol=1e-5, verbose=True)
+vb2mix = vb2.make_mixture()
+
+# Now we draw another 10,000 samples with the updated proposal
+sampler.proposal = vb2mix
+print('running importance sampling ...')
+sampler.run(10**4)
+
+# We can combine the samples and weights from the two runs, see reference [Cor+12].
+weights = pypmc.sampler.importance_sampling.combine_weights([samples[:]      for samples in sampler.samples],
+                                                            [weights[:][:,0] for weights in sampler.weights],
+                                                            [mix, vb2mix]                                 ) \
+                                                            [:][:,0]
+samples = sampler.samples[:]
 
 #weights = pypmc.sampler.importance_sampling.combine_weights([samples[:]      for samples in sampler.samples],
 #                                                            [weights[:][:,0] for weights in sampler.weights],

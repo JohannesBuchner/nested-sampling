@@ -27,18 +27,23 @@ mcs = []
 for j in range(10):
 	print('running MCMC chain %d ...' % j)
 	start = np.zeros(ndim) + 0.5
-	start[0] = np.random.uniform(0, 1)
-	sigma = 10**(start[0]*20 - 10)
+	while True:
+		start[0] = np.random.uniform(0, 1)
+		sigma = 10**(start[0]*20 - 10)
+		# check that we are not too far up
+		if sigma > 10**-difficulty and sigma < 0.5: 
+			break
 	if sigma > 0.5:
 		sigma = 0.5
-	prop = LocalStudentT(0.2 * sigma, 1)
+	print 'start at %f %f' % (start[0], sigma)
+	prop = LocalStudentT(0.002 * sigma, 1)
 	mc = pypmc.sampler.markov_chain.AdaptiveMarkovChain(log_target, prop, start)
 	mcs.append(mc)
 	
 	mc.run(500)
 	mc.clear()
 	for i in range(20):
-		mc.run(1000)
+		mc.run(500)
 		mc.adapt()
 
 mc_samples_sorted_by_chain = [mc.samples[:] for mc in mcs]
@@ -57,6 +62,7 @@ vb = pypmc.mix_adapt.variational.GaussianInference(mc_samples[::100],
 	initial_guess=long_patches, W0=np.eye(ndim)*1e10)
 
 vb_prune = 0.5 * len(vb.data) / vb.K
+vb_prune = 0
 
 print('running variational Bayes ...')
 vb.run(1000, rel_tol=1e-8, abs_tol=1e-5, prune=vb_prune, verbose=True)
@@ -104,7 +110,7 @@ pypmc.tools.plot_mixture(sampler.proposal, visualize_weights=True, cmap='jet')
 plt.colorbar()
 plt.clim(0.0, 1.0)
 plt.title('ln Z = %f' % log(integral_estimator))
-plt.savefig('funnel_integrate_pmc_%d_%d.pdf' % (ndim, difficulty), bbox_inches='tight')
+plt.savefig('funnel_integrate_pmcmcmc_%d_%d.pdf' % (ndim, difficulty), bbox_inches='tight')
 plt.close()
 
 """

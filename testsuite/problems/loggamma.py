@@ -332,14 +332,16 @@ def create_problem_ffunnel(**config):
 		like = -0.5 * (((numpy.abs(x[1:]-0.5) + 10**-difficulty)/width)**2 + log(2*pi * width**2)).sum()
 		return like
 	
-	Z_analytic = {
-		(2,0):-4.7323,(5,0):-10.463,   (10,0):-19.1014, (20,0): -35.90715,
-		(2,1):-3.24778,(5,1):-5.11407, (10,1):-3.1,
-		(2,2):-2.4618,(5,2):-3.21154,  (10,2):-3.37,
-		(2,3):-2.00452,(5,3):-2.50263, (10,3):-3.42846,     (20,3): -4.15,
-		(2,4):-1.687, (5,4): -2.30399, 
-		(2,5):-1.4466, (5,5): -2.33, (10,5): -3.3, (20,5): 0,
-        }.get((ndim,difficulty), 0)
+	#Z_analytic = {
+	#	(2,0):-4.7323, (5,0):-10.463,  (10,0):-19.1014, (20,0): -35.90715,
+	#	(2,1):-3.24778,(5,1):-5.11407, (10,1):-3.1,
+	#	(2,2):-2.4618, (5,2):-3.21154, (10,2):-3.37,
+	#	(2,3):-2.00452,(5,3):-2.50263, (10,3):-3.42846,     (20,3): -4.15,
+	#	(2,4):-1.687,  (5,4):-2.30399, 
+	#	(2,5):-1.4466, (5,5):-2.33, (10,5): -3.3, (20,5): 0,
+        #}.get((ndim,difficulty), 0)
+        import json, os
+        Z_analytic = json.load(open(os.path.join(os.path.dirname(__file__), 'ffunnel_integrate_pmciter_results.json')))[str(ndim)][str(difficulty)]['lnZ']
 	config['loglikelihood'] = loglikelihood
 	config['Z_analytic'] = Z_analytic
 	config['description'] = """A gaussian with mean 0.5, stdev first parameter.

@@ -67,6 +67,7 @@ def any_within_distance_of(members, maxdistance, us, metric='euclidean'):
 	return (dists < maxdistance).any(axis=0)
 
 most_distant_nearest_neighbor = None
+bootstrapped_maxdistance = None
 try:
 	import os
 	from ctypes import *
@@ -139,6 +140,24 @@ try:
 		#assert (counts == counts_true).all(), (counts, counts_true)
 		return counts
 
+	lib.bootstrapped_maxdistance.argtypes = [
+		ndpointer(dtype=numpy.float64, ndim=2, flags='C_CONTIGUOUS'), 
+		c_int, 
+		c_int, 
+		ndpointer(dtype=numpy.float64, ndim=2, flags='C_CONTIGUOUS'), 
+		c_int, 
+		]
+	lib.bootstrapped_maxdistance.restype = c_double
+	
+	def bootstrapped_maxdistance(xx, nbootstraps):
+		nsamples, ndim = xx.shape
+		chosen = numpy.zeros((nsamples, nbootstraps))
+		for b in range(nbootstraps):
+			chosen[numpy.random.choice(numpy.arange(nsamples), size=nsamples, replace=True),b] = 1.
+		
+		maxdistance = lib.bootstrapped_maxdistance(xx, nsamples, ndim, chosen, nbootstraps)
+		return maxdistance
+
 except ImportError as e:
 	print 'Using slow, high-memory neighborhood function nearest_rdistance_guess because import failed:', e
 except Exception as e:
@@ -182,12 +201,16 @@ def update_rdistance(u, ibootstrap, rdistance, verbose = False, metric='euclidea
 	distances = scipy.spatial.distance.cdist(u[mask], u[-mask], metric=metric)
 	assert distances.shape == (mask.sum(), (-mask).sum())
 	nearest_distance_to_members = distances.min(axis=0)
+	if verbose:
+		print 'nearest distances:', nearest_distance_to_members.max(), nearest_distance_to_members
 	newrdistance = max(rdistance, nearest_distance_to_members.max())
 	if newrdistance > rdistance and verbose:
-		print ibootstrap, 'extending:', rdistance
+		print ibootstrap, 'extending:', newrdistance
 	return newrdistance
 
 def find_rdistance(u, verbose=False, nbootstraps=15, metric='euclidean'):
+	if metric == 'euclidean' and bootstrapped_maxdistance is not None:
+		return bootstrapped_maxdistance(u, nbootstraps)
 	# find nearest point for every point
 	if verbose: print 'finding nearest neighbors:'
 	rdistance = 0 #initial_rdistance_guess(u)
@@ -196,4 +219,15 @@ def find_rdistance(u, verbose=False, nbootstraps=15, metric='euclidean'):
 		rdistance = update_rdistance(u, ibootstrap, rdistance, verbose=verbose, metric=metric)
 	return rdistance
 
-
+if __name__ == '__main__':
+	nbootstraps = 10
+	numpy.random.seed(1)
+	u = numpy.random.uniform(size=(200,2))
+	for i in range(100):
+		numpy.random.seed(i)
+		a = bootstrapped_maxdistance(u, nbootstraps)
+		numpy.random.seed(i)
+		b = find_rdistance(u, nbootstraps=nbootstraps, metric='euclidean', verbose=False)
+		print a, b
+		assert numpy.allclose(a, b)
+		
