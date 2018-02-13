@@ -46,7 +46,7 @@ def run_multinest(**config):
 	starttime = time.time()
 	pymultinest.run(myloglike, myprior, mn_args['n_params'], **mn_args)
 	duration = time.time() - starttime
-	with file('%sparams.json' % mn_args['outputfiles_basename'], 'w') as f:
+	with open('%sparams.json' % mn_args['outputfiles_basename'], 'w') as f:
 		parameters = ['%d' % (i+1) for i in range(mn_args['n_params'])]
 		json.dump(parameters, f, indent=2)
 	a = pymultinest.Analyzer(n_params = mn_args['n_params'],

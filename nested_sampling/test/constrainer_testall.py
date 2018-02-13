@@ -51,7 +51,7 @@ constrainers = [
 ]
 
 def run_constrainers(ds, Ns, constrainers):
-	fout = file('constrainertest.tex', 'w')
+	fout = open('constrainertest.tex', 'w')
 	print(' %(name)30s  %(d)3s  %(N)3s     D  pvalue     D  pvalue   iter      evals   efficiency' % dict(name='constrainer', d='dim', N='N'))
 	print(' %s  ---  ---  ----  ------  ----  ------  -----  ----------  -------------' % ('-'*30))
 	for d in ds:

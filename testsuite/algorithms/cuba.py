@@ -48,7 +48,7 @@ def run_cuba(**config):
 	
 	def print_results(name, results):
 		keys = ['nregions', 'neval', 'fail']
-		keys = list(filter(results.has_key, keys))
+		keys = [k for k in keys if k in results]
 		text = ["%s %d" % (k, results[k]) for k in keys]
 		print("%s RESULT:\t" % name.upper() + "\t".join(text))
 		for comp in results['results']:

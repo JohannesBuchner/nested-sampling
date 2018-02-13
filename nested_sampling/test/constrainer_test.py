@@ -505,7 +505,7 @@ def run_constrainer(d, N, constrainer, name):
 		plt.savefig('test_constrainer_%d_%s.pdf' % (d, name), bbox_inches='tight')
 		plt.close()
 		results.update(dict(name=name, efficiency=results['niter'] * 100. / results['total_samples']))
-		json.dump(results, file(filename, 'w'), indent=4)
+		json.dump(results, open(filename, 'w'), indent=4)
 	print('%(name)30s:  %(d)3d  %(N)3d  %(D).2f  %(pvalue).4f  %(shrinkage_D).2f  %(shrinkage_pvalue).4f %(niter)6d  %(total_samples)10d  %(efficiency).2f%%' % results)
 	return results
 
