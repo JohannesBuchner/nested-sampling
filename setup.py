@@ -17,8 +17,7 @@ setup(name='nested_sampling',
 		'nested_sampling',
 		'nested_sampling.samplers',
 		'nested_sampling.clustering',
-		'nested_sampling.samplers.svm',
-		'nested_sampling.samplers.hamiltonian',
+		'nested_sampling.samplers.svm'
 	],
 	)
 
