@@ -367,7 +367,7 @@ class FriendsConstrainer(object):
 				
 					for i, lo, hi in hints:
 						u[i] = numpy.random.uniform(lo, hi)
-					if not is_inside(self.transform_point(u)):
+					if not self.is_inside(self.transform_point(u)):
 						# not sure if this is a good idea
 						# it means we dont completely trust
 						# the hinting function
@@ -418,22 +418,22 @@ class FriendsMahalanobisConstrainer(FriendsConstrainer):
 	def transform_points(self, points):
 		# we have the mean and covariance.
 		X = numpy.matrix(points - self.mean)
-		X_white = np.dot(X, self.whitening_matrix)
+		X_white = numpy.dot(X, self.whitening_matrix)
 		return (X_white - self.box_scale_lo) / (self.box_scale_hi - self.box_scale_lo) * 0.2 + 0.4
 	def transform_point(self, point):
 		X = point - self.mean
-		X_white = np.dot(X, self.whitening_matrix)
+		X_white = numpy.dot(X, self.whitening_matrix)
 		return (X_white - self.box_scale_lo) / (self.box_scale_hi - self.box_scale_lo) * 0.2 + 0.4
 	def transform_new_points(self, points):
 		npoints, ndim = numpy.shape(points)
 		self.mean = numpy.mean(points, axis=0)
 		X = numpy.matrix(points - self.mean)
-		self.cov = np.dot(X.T, X)
+		self.cov = numpy.dot(X.T, X)
 		# eigen values/vectors of cov
-		d, E = np.linalg.eigh(cov)
+		d, E = numpy.linalg.eigh(self.cov)
 		# whitening matrix
-		self.whitening_matrix = np.dot(np.dot(E, D), E.T)
-		X_white = np.dot(X, self.whitening_matrix)
+		self.whitening_matrix = numpy.dot(numpy.dot(E, d), E.T)
+		X_white = numpy.dot(X, self.whitening_matrix)
 		self.box_scale_lo = numpy.min(X_white, axis=0)
 		self.box_scale_hi = numpy.max(X_white, axis=0)
 		return X_white

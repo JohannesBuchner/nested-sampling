@@ -263,6 +263,8 @@ def create_problem_funnel(**config):
 		return like
 	
 	def draw_constrained(x, Lmin):
+		assert False
+		sigma = 0.01
 		width = 10**(x[0] * 20 - 10)
 		mu = xobs
 		Llast = Lmin

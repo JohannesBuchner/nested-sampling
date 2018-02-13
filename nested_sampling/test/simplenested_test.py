@@ -35,8 +35,6 @@ if __name__ == '__main__':
 		a = -0.5 * (((x[0] - 0.5)/0.03)**2)
 		b = -0.5 * (((x[1] - 0.5)/0.03)**2)
 		return a + b - 0.5 * log(2*pi) * 2 - 0.5 * log(0.03**2) * 2
-		#like = -0.5 * (((x - mu)/sigma)**2 + log(2*pi * sigma**2)).sum()
-		return like
 	# evidence should be log(2.01) = 0.698
 	logZanalytic = log(0.01 + (2*pi)**0.5 / 10)
 	logZanalytic = log(2.01)

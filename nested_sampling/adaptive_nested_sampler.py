@@ -59,9 +59,9 @@ class AdaptiveNestedSampler(object):
 			loglikelihood=self.loglikelihood, 
 			previous=self.samples,
 			ndim=self.ndim,
-			startu = live_pointsu[k], 
-			startx = live_pointsx[k], 
-			startL = live_pointsL[k],
+			startu = self.live_points[k][1], 
+			startx = self.live_points[k][2], 
+			startL = self.live_points[k][0],
 			starti = k)
 		
 		self.live_points.append((Lj, uj, xj))

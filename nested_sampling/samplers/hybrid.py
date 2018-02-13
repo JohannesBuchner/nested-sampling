@@ -849,7 +849,7 @@ class HybridMLMultiEllipsoidConstrainer(object):
 			metric_updated = True
 		elif self.metriclearner == 'sdml':
 			metric = SDML()
-			metric.fit(shifted_cluster_members, W = numpy.ones((len(w), len(w))))
+			metric.fit(shifted_cluster_members, W = numpy.ones((len(shifted_cluster_members), len(shifted_cluster_members))))
 			metric_updated = True
 		else:
 			assert False, self.metriclearner

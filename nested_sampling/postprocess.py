@@ -73,7 +73,7 @@ def _weighted_avg_and_std(values, weights):
     # https://stackoverflow.com/questions/2413522/weighted-standard-deviation-in-numpy
     average = numpy.average(values, weights=weights)
     variance = numpy.average((values-average)**2, weights=weights)
-    return (average, math.sqrt(variance))
+    return (average, variance**0.5)
 
 def mode_importance(weights):
 	"""
@@ -112,6 +112,9 @@ def mode_importance(weights):
 	# the idea here is that the inter-cluster distances must be much smaller than the cluster-distances
 	# small cluster distances multiplied by 10 will remain small, if there is a well-separated cluster
 	# if no cluster, then this will be ~clusterdists.max()/3, and no splitting will be done
+	# TODO: this may be wrong
+	clusterdists = distances
+	# end TODO
 	threshold = scipy.stats.mstats.mquantiles(clusterdists, 0.1)*10 + clusterdists.max()/3
 
 	assigned = clusterdetect.cut_cluster(cluster, distances, threshold)

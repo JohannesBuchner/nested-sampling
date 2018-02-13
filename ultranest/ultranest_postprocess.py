@@ -82,7 +82,7 @@ def _weighted_avg_and_std(values, weights):
     # https://stackoverflow.com/questions/2413522/weighted-standard-deviation-in-numpy
     average = numpy.average(values, weights=weights)
     variance = numpy.average((values-average)**2, weights=weights)
-    return (average, math.sqrt(variance))
+    return (average, variance**0.5)
 
 def mode_importance(weights):
 	"""

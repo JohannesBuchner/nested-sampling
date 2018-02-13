@@ -31,7 +31,7 @@ class NestedSampler(object):
 		if ndim is not None:
 			self.draw_global_uniform = lambda: numpy.random.uniform(0, 1, size=ndim)
 		else:
-			raise ArgumentError("either pass ndim or draw_global_uniform")
+			raise Exception("either pass ndim or draw_global_uniform")
 			self.draw_global_uniform = draw_global_uniform
 		# draw N starting points from prior
 		#print 'drawing initial %d live points...' % nlive_points
