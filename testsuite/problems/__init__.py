@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 Problems known to man
 """
@@ -43,6 +44,6 @@ if __name__ == '__main__':
 			like(v)
 		duration = time.time() - starttime
 		
-		print '%-25s: %05.03f seconds / 10000 evaluations -- expect %.2f minutes runtime for 2000000' % (p['problem_name'], duration, duration / N * 2000000 / 60)
+		print('%-25s: %05.03f seconds / 10000 evaluations -- expect %.2f minutes runtime for 2000000' % (p['problem_name'], duration, duration / N * 2000000 / 60))
 		
 		

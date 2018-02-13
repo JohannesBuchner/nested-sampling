@@ -1,3 +1,4 @@
+from __future__ import print_function
 import scipy, scipy.optimize
 import numpy
 from numpy import log, exp, pi, log10
@@ -12,7 +13,7 @@ class EllipsoidContainer(object):
 		xwidth= (xhigh - xlow) / 2 * 0 + rmax * 2**0.5 / 2.
 		self.cov = numpy.matrix(numpy.diag((xwidth)**2))
 		self.mid = xmid
-		print self.cov, self.mid
+		print(self.cov, self.mid)
 	def plot(self, **kwargs):
 		x0, y0 = self.mid[0], self.mid[1]
 		sx, sy = self.cov[0,0], self.cov[1,1]
@@ -28,7 +29,7 @@ class EllipsoidContainer(object):
 		#ymid = -rho * (x - x0)
 		#ysol = ( rho**2 * (x - x0)**2 - (sx * sy * (x - x0)**2) + sy)**0.5
 		ymid = rho * (x - x0) + sx*y0
-		print 'rho', rho**2, sx*sy
+		print('rho', rho**2, sx*sy)
 		ysol = (-(rho**2 - sx*sy) * (sx - (x - x0)**2) )**0.5
 		plt.plot(x, (ymid + ysol) / sx, '-', **kwargs)
 		plt.plot(x, (ymid - ysol) / sx, '-', **kwargs)
@@ -42,8 +43,8 @@ class EllipsoidContainer(object):
 			d = u.T * invcov * u
 			bad = numpy.abs(d) > 1
 			if bad.any():
-				print 'some points not contained:'
-				print xi, d
+				print('some points not contained:')
+				print(xi, d)
 				return False
 		return True
 	def unpack(self, params):
@@ -85,9 +86,9 @@ class EllipsoidContainer(object):
 		#print d
 		#V = 4/3 * pi * d**0.5
 		V = d**0.5
-		print '*', params
-		print '*', self.cov, self.mid
-		print '** V', V
+		print('*', params)
+		print('*', self.cov, self.mid)
+		print('** V', V)
 		return V
 	def optimize(self):
 		start = self.pack()
@@ -102,7 +103,7 @@ class EllipsoidContainer(object):
 		result = scipy.optimize.fmin(self.minfunc, start)
 		self.unpack(result)
 		assert self.contains_points()
-		print result
+		print(result)
 
 
 

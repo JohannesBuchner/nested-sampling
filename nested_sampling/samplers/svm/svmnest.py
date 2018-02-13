@@ -1,3 +1,4 @@
+from __future__ import print_function
 import scipy, scipy.stats, scipy.cluster, scipy.optimize
 import numpy
 from numpy import exp, log, log10
@@ -30,7 +31,7 @@ def svm_classify(points, classes, plot=True):
 		y = numpy.linspace(0, 1, 100)
 		grid = numpy.array([[[xi, yi] for xi in x] for yi in y])
 		dists = numpy.array([[clf.predict_proba(transform([[xi, yi]]))[0][0] for xi in x] for yi in y])
-		print 'levels:', dists.max(), dists.min()
+		print('levels:', dists.max(), dists.min())
 		plt.contour(x, y, dists, [0.99, 0.9, 0.1], colors=['red', 'red', 'red'], linestyles=['-', '--', ':'])
 		plt.savefig('svm_classifier.pdf', bbox_inches='tight')
 		plt.close()
@@ -88,7 +89,7 @@ class SVMConstrainer(object):
 				assert isinside(ustart)
 				clustermaxima = [[mu, mL] for mu, mL in self.maxima if isinside(mu)]
 				if len(clustermaxima) == 0:
-					print 'optimizing in cluster', i, ulow, uhigh
+					print('optimizing in cluster', i, ulow, uhigh)
 					def minfunc(ui):
 						if not isinside(ui):
 							return 1e300
@@ -98,17 +99,17 @@ class SVMConstrainer(object):
 					#ulow = numpy.min([ulow, ubest], axis=0)
 					#uhigh = numpy.max([uhigh, ubest], axis=0)
 					Lbest = loglikelihood(priortransform(ubest))
-					print 'new best:', ubest, Lbest
+					print('new best:', ubest, Lbest)
 					if self.sampler:
 						self.sampler.Lmax = max(self.sampler.Lmax, Lbest)
 					self.maxima.append([ubest, Lbest])
 				else:
 					if len(clustermaxima) > 1:
-						print 'WARNING: multiple maxima fitted already', clustermaxima
+						print('WARNING: multiple maxima fitted already', clustermaxima)
 					ubest, Lbest = clustermaxima[0]
 				
 				rects.append((i, (ulow, uhigh, ubest, Lbest)))
-				print 'adding new rectangle:', (i, (ulow, uhigh, ubest, Lbest))
+				print('adding new rectangle:', (i, (ulow, uhigh, ubest, Lbest)))
 			rects = dict(rects)
 		
 			# now that we got a little more familiar with out clusters,
@@ -123,7 +124,7 @@ class SVMConstrainer(object):
 				clf, svmtransform = svm_classify(previousu, rectid)
 			except ValueError as e:
 				clf, svmtransform = None, None
-				print 'WARNING: SVM step failed: ', e
+				print('WARNING: SVM step failed: ', e)
 			self.clf = clf
 			self.svmtransform = svmtransform
 			self.rects = rects
@@ -218,25 +219,25 @@ if __name__ == '__main__':
 	from simplenested import NestedSampler, nested_integrator
 	constrainer = SVMConstrainer()
 	
-	print 'preparing sampler'
+	print('preparing sampler')
 	sampler = NestedSampler(nlive_points = 200, ndim=2,
 		priortransform=priortransform, loglikelihood=loglikelihood, 
 		draw_constrained = constrainer.draw_constrained)
 	constrainer.sampler = sampler
-	print 'running sampler'
+	print('running sampler')
 	result = nested_integrator(tolerance=0.01, sampler=sampler)
 
 	try:
 		x = numpy.array([x for _, x, _ in sampler.samples])
 		y = numpy.exp([l for _, _, l in sampler.samples])
-		print x
-		print y
+		print(x)
+		print(y)
 		plt.figure()
 		plt.hexbin(x[:,0], x[:,1], C=y, gridsize=40)
 		plt.savefig('svmtest_nested_samples.pdf', bbox_inches='tight')
 		plt.close()
 	except Exception as e:
-		print e
+		print(e)
 
 	try:
 		weights = numpy.array(result['weights']) # L, width
@@ -249,14 +250,14 @@ if __name__ == '__main__':
 		plt.savefig('svmtest_nested_integral.pdf', bbox_inches='tight')
 		plt.close()
 	except Exception as e:
-		print e
+		print(e)
 	
 	#u = numpy.linspace(0, 1, 10000)
 	#x = numpy.array([priortransform(ui) for ui in u])
 	#L = numpy.array([loglikelihood(xi) for xi in x])
 	#print 'monte carlo integration (%d samples) logZ:' % len(u), log(exp(L).mean())
 
-	print 'nested sampling (%d samples) logZ = ' % len(result['samples']), result['logZ'], result['logZerr']
+	print('nested sampling (%d samples) logZ = ' % len(result['samples']), result['logZ'], result['logZerr'])
 	
 
 

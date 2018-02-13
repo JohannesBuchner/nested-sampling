@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy
 import scipy.spatial, scipy.cluster
 import numpy
@@ -23,7 +24,7 @@ for i, shape in enumerate([rect, line, banana]):
 	# sample with rejections
 	mask = numpy.array([shape(c) for c in coords])
 	chosen = coords[mask]
-	print 'chosen:', i, mask.sum()
+	print( 'chosen:', i, mask.sum())
 	#chosen = chosen[:100,:]
 	plt.plot(chosen[:,0], chosen[:,1], '.')
 	plt.xlim(0, 1); plt.ylim(0, 1)
@@ -62,7 +63,7 @@ for i, shape in enumerate([rect, line, banana]):
 	#	for j, k in enumerate(knearest)]
 	kdists = numpy.array([numpy.max([numpy.abs(b - chosen[j,:]) for b in chosen[k]], axis=0)
 		for j, k in enumerate(knearest)])
-	print kdists[0].shape, kdists[0]
+	print(kdists[0].shape, kdists[0])
 	plt.subplot(2, 3, i+1+3)
 	plt.hist(clusterdists)
 	
@@ -71,7 +72,7 @@ for i, shape in enumerate([rect, line, banana]):
 	plt.xlim(0, 1)
 	maxdistance = 0.05
 	maxdistance = numpy.max(kdists, axis=0)
-	print 'maxdistance:', maxdistance
+	print('maxdistance:', maxdistance)
 	ylims = plt.ylim()
 	plt.vlines(maxdistance, ylims[0], ylims[1], linestyles=['-'])
 	plt.ylim(ylims)
@@ -91,7 +92,7 @@ for i, shape in enumerate([rect, line, banana]):
 	dists = [numpy.abs(X.reshape(100, 100, 1) - chosen[:,0].reshape(1, 1, -1)),
 		 numpy.abs(Y.reshape(100, 100, 1) - chosen[:,1].reshape(1, 1, -1)),
 		]
-	print dists[0].shape
+	print(dists[0].shape)
 	
 	#dists = numpy.min(dists, axis=2)
 	#dists = numpy.empty(len(sample))
@@ -100,7 +101,7 @@ for i, shape in enumerate([rect, line, banana]):
 	#	assert dist.shape == (len(sample),), dist.shape
 	#	dists[j] = numpy.min(dist)
 	closeby = numpy.any(numpy.all(dists < maxdistance.reshape((-1, 1, 1, 1)), axis=0), axis=2)
-	print closeby.shape
+	print(closeby.shape)
 	#plt.plot(X[-closeby], Y[-closeby], '.', color='grey', alpha=0.2)
 	plt.contourf(X, Y, closeby*2., [-0.5, 0.5], colors=['grey'])
 		

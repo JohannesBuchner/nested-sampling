@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 Runs Python-implemented Nested Sampling algorithms from this package.
 """
@@ -54,13 +55,13 @@ def run_nested(**config):
 		constrainer = MCMCConstrainer(proposer = proposer)
 	else:
 		raise NotImplementedError('draw_method "%s" not implemented' % method)
-	print 'configuring NestedSampler'
+	print( 'configuring NestedSampler')
 	starttime = time.time()
 	sampler = NestedSampler(nlive_points = nlive_points, 
 		priortransform=priortransform, loglikelihood=loglikelihood, 
 		draw_constrained = constrainer.draw_constrained, ndim=ndim)
 	constrainer.sampler = sampler
-	print 'running nested_integrator to tolerance 0.5'
+	print('running nested_integrator to tolerance 0.5')
 	assert config['integrator'] == 'normal', config['integrator']
 	result = nested_integrator(tolerance=0.5, sampler=sampler, max_samples=2000000)
 	endtime = time.time()

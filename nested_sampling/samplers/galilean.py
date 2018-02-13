@@ -1,3 +1,4 @@
+from __future__ import print_function
 import scipy, scipy.stats
 import numpy
 from numpy import exp, log, log10, pi, cos, sin, dot, vdot
@@ -188,11 +189,11 @@ class HybridRadFriendsConstrainer(object):
 				ntoaccept += 1
 				if L >= Lmin:
 					if ntotal >= 200:
-						print 'Drawing from prior is becoming inefficient: %d draws before accept' % ntotal
-						print
+						print('Drawing from prior is becoming inefficient: %d draws before accept' % ntotal)
+						print()
 					if ntoaccept >= 200:
-						print 'RadFriends is becoming inefficient: %d draws until accept' % ntoaccept
-						print
+						print('RadFriends is becoming inefficient: %d draws until accept' % ntoaccept)
+						print()
 					self.nfriends_accepts += 1
 					return u, x, L, ntoaccept
 				if ntotal >= 1000:
@@ -200,13 +201,13 @@ class HybridRadFriendsConstrainer(object):
 					# becomes inefficient as we go to
 					# small region
 					# switch to drawing from Friends
-					print 'switching to Friends sampling phase'
-					print
+					print('switching to Friends sampling phase')
+					print()
 					self.phase = 1
 					break
 				if ntoaccept >= 2000:
-					print 'switching to local steps sampling phase'
-					print
+					print('switching to local steps sampling phase')
+					print()
 					self.phase = 2
 					# drawing using RadFriends can become
 					# inefficient in high dimensionality
@@ -221,13 +222,13 @@ class HybridRadFriendsConstrainer(object):
 				ntoaccept += 1
 				if L >= Lmin:
 					if ntoaccept >= 200:
-						print 'RadFriends is becoming inefficient: %d draws until accept' % ntoaccept
-						print
+						print('RadFriends is becoming inefficient: %d draws until accept' % ntoaccept)
+						print()
 					self.nfriends_accepts += 1
 					return u, x, L, ntoaccept
 				if ntoaccept >= 2000:
-					print 'switching to local steps sampling phase'
-					print
+					print( 'switching to local steps sampling phase')
+					print()
 					self.phase = 2
 					# drawing using RadFriends can become
 					# inefficient in high dimensionality
@@ -418,10 +419,10 @@ class GalileanRadFriendsConstrainer(HybridRadFriendsConstrainer):
 		rr = self.nreverse * 1. * N / n
 		if pr < 0.6: # too many proceeds
 			self.velocity_scale /= 1.1
-			print 'velocity' + ' '*50 + 'v'
+			print('velocity' + ' '*50 + 'v')
 		elif pr > 0.85:
 			self.velocity_scale *= 1.1
-			print 'velocity' + ' '*50 + '^'
+			print('velocity' + ' '*50 + '^')
 		else:
 			if rr > 0.10: # too many reverse, decrease scale
 				self.velocity_scale /= 1.01
@@ -441,21 +442,21 @@ class GalileanRadFriendsConstrainer(HybridRadFriendsConstrainer):
 		n = self.nproceed_total + self.nreflect_total + self.nreverse_total
 		if n == 0: return
 		velocity_scale = self.velocity_scale
-		print 'GalileanConstrainer stats: nsteps: %d, %.3f%% proceeds, %.3f%% reflects, %.5f%% reverses ' % (
-			n, self.nproceed_total * 100. / n,  self.nreflect_total * 100. / n, self.nreverse_total * 100. / n)
+		print('GalileanConstrainer stats: nsteps: %d, %.3f%% proceeds, %.3f%% reflects, %.5f%% reverses ' % (
+			n, self.nproceed_total * 100. / n,  self.nreflect_total * 100. / n, self.nreverse_total * 100. / n))
 		if self.nproceed_total * 1. / n < 0.5:
-			print 'velocity_scale = %s (too large!, too few proceeds)' % velocity_scale
+			print('velocity_scale = %s (too large!, too few proceeds)' % velocity_scale)
 		elif self.nproceed_total * 1. / n > 0.75:
-			print 'velocity_scale = %s (too small!, too many proceeds)' % velocity_scale
+			print('velocity_scale = %s (too small!, too many proceeds)' % velocity_scale)
 		else:
-			print 'velocity_scale = %s (good by proceeds)' % velocity_scale
+			print('velocity_scale = %s (good by proceeds)' % velocity_scale)
 		N = len(self.velocities)
 		if self.nreverse_total * 1. / n * N < 0.25:
-			print 'velocity_scale = %s (too large!, too few reverse)' % velocity_scale
+			print('velocity_scale = %s (too large!, too few reverse)' % velocity_scale)
 		elif self.nreverse_total * 1. / n * N > 5:
-			print 'velocity_scale = %s (too small!, too many reverse)' % velocity_scale
+			print('velocity_scale = %s (too small!, too many reverse)' % velocity_scale)
 		else:
-			print 'velocity_scale = %s (good by reverses)' % velocity_scale
+			print('velocity_scale = %s (good by reverses)' % velocity_scale)
 
 class MCMCRadFriendsConstrainer(HybridRadFriendsConstrainer):
 	"""
@@ -478,10 +479,10 @@ class MCMCRadFriendsConstrainer(HybridRadFriendsConstrainer):
 		ar = self.naccepts * 100. / n
 		boost = self.nskip * 100. / n
 		if ar < 85:
-			print 'proposal scale %.2f acceptance rate: %.2f%% %50s' % (self.proposal_scale, ar, 'v')
+			print('proposal scale %.2f acceptance rate: %.2f%% %50s' % (self.proposal_scale, ar, 'v'))
 			self.proposal_scale /= 1.01
 		elif ar > 95:
-			print 'proposal scale %.2f acceptance rate: %.2f%% %50s' % (self.proposal_scale, ar, '^')
+			print('proposal scale %.2f acceptance rate: %.2f%% %50s' % (self.proposal_scale, ar, '^'))
 			self.proposal_scale *= 1.01
 		self.naccepts_total += self.naccepts
 		self.nrejects_total += self.nrejects
@@ -521,14 +522,13 @@ class MCMCRadFriendsConstrainer(HybridRadFriendsConstrainer):
 		proposal_scale = self.proposal_scale
 		ar = self.naccepts_total * 100. / n
 		boost = self.nskip * 100. / n
-		print 'MCMCConstrainer stats: nsteps: %d, %.3f%% accepts, %.3f%% skipped (%d)' % (
-			n, ar, boost, self.nskip)
+		print('MCMCConstrainer stats: nsteps: %d, %.3f%% accepts, %.3f%% skipped (%d)' % n, ar, boost, self.nskip)
 		if ar < 85:
-			print 'proposal_scale = %s (too large!, too few accepts)' % proposal_scale
+			print('proposal_scale = %s (too large!, too few accepts)' % proposal_scale)
 		elif ar > 95:
-			print 'proposal_scale = %s (too small!, too many accepts)' % proposal_scale
+			print('proposal_scale = %s (too small!, too many accepts)' % proposal_scale)
 		else:
-			print 'proposal_scale = %s (good by accepts)' % proposal_scale
+			print('proposal_scale = %s (good by accepts)' % proposal_scale)
 
 
 if __name__ == '__main__':
@@ -545,7 +545,7 @@ if __name__ == '__main__':
 		p = numpy.random.uniform(0, 1, size=ndim)
 		if loglikelihood(p) >= Lmin:
 			live_points.append((p, p, Lmin))
-	print 'have live points'
+	print('have live points')
 	
 	#constrainer = GalileanRadFriendsConstrainer(100, ndim, 
 	#	velocity_scale = 1, nsteps = 200, plot=3)

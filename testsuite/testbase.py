@@ -1,3 +1,4 @@
+from __future__ import print_function
 #!/usr/bin/env python
 # 
 
@@ -108,8 +109,8 @@ def create_counting_nonnan(function):
 		l = float(function(*args, **kwargs))
 		if numpy.isnan(l) or numpy.isinf(l):
 			import sys
-			print 'FATAL ERROR: in problem %s, function %s' % (p, original_loglikelihood)
-			print 'FATAL ERROR: invalid likelihood return value at', x, l
+			print('FATAL ERROR: in problem %s, function %s' % (p, original_loglikelihood))
+			print('FATAL ERROR: invalid likelihood return value at', x, l)
 			sys.exit(-1)
 		return l
 	counting_function.calls = 0
@@ -204,16 +205,16 @@ def run_algorithm(p, a):
 def run_all():
 	# get problem
 	for i, p in enumerate(problems.problems):
-		print 
-		print p['problem_name']
-		print '=' * len(p['problem_name'])
+		print()
+		print( p['problem_name'])
+		print('=' * len(p['problem_name']))
 		# apply algorithm to it, 10 times with different seeds
 		algorithms_results = []
 		for j, a in enumerate(algorithms.algorithms):
-			print '%s (%d of %d)|%s (%d of %d)' % (
+			print('%s (%d of %d)|%s (%d of %d)' % (
 				p['problem_name'], i+1, len(problems.problems),
 				a['algorithm_name'], j+1, len(algorithms.algorithms)
-			)
+			))
 			algorithms_results.append(AlgorithmResult(a['algorithm_name'], run_algorithm(p, a)))
 		yield (p, algorithms_results)
 

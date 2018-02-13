@@ -1,3 +1,4 @@
+from __future__ import print_function
 import scipy, scipy.stats
 from numpy import exp, log, log10
 import numpy
@@ -54,8 +55,8 @@ class BaseProposal(object):
 	Print some stats on the acceptance rate
 	"""
 	def stats(self):
-		print 'Proposal %s stats: %.2f%% accepts' % (repr(self), 
-			numpy.mean(self.accepts) * 100.)
+		print('Proposal %s stats: %.2f%% accepts' % (repr(self), 
+			numpy.mean(self.accepts) * 100.))
 
 class MultiScaleProposal(BaseProposal):
 	"""Proposal over multiple scales, inspired by DNest. 
@@ -145,10 +146,9 @@ class MCMCConstrainer(object):
 					break
 		
 		if Li < Lmin:
-			print
-			print 'ERROR: MCMCConstrainer could not find a point matching constraint!'
-			print 'ERROR: Proposer stats:',
-			self.proposer.stats()
+			print()
+			print('ERROR: MCMCConstrainer could not find a point matching constraint!')
+			print('ERROR: Proposer stats:', self.proposer.stats())
 			assert Li > Lmin, (Li, Lmin, self.nmaxsteps, numpy.mean(self.proposer.accepts), len(self.proposer.accepts))
 		return ui, xi, Li, n
 

@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 Copyright: Johannes Buchner (C) 2013
 
@@ -152,17 +153,17 @@ def nested_integrator(sampler, tolerance = 0.01, max_samples=None):
 			#total_error = logZerr + logmaxContribution
 			if max_samples is not None and int(max_samples) < int(sampler.ndraws):
 				pbar.finish()
-				print 'maximum number of samples reached'
+				print('maximum number of samples reached')
 				break
 			if total_error < tolerance:
 				pbar.finish()
-				print 'tolerance reached:', total_error, logZerr, remainderZerr
+				print('tolerance reached:', total_error, logZerr, remainderZerr)
 				break
 			# we want to make maxContribution as small as possible
 			#   but if it becomes 10% of logZerr, that is enough
 			if remainderZerr < logZerr / 10.:
 				pbar.finish()
-				print 'tolerance will not improve: remainder error (%.3f) is much smaller than systematic errors (%.3f)' % (logZerr, remainderZerr)
+				print('tolerance will not improve: remainder error (%.3f) is much smaller than systematic errors (%.3f)' % (logZerr, remainderZerr))
 				break
 		
 		widgets[0] = '|%d/%d samples+%d/%d|lnZ = %.2f +- %.3f + %.3f|L=%.2e @ %s' % (

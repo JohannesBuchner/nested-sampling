@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 Runs the MultiNest algorithm
 """
@@ -21,7 +22,7 @@ def run_multinest(**config):
 		try:
 			l = loglikelihood([cube[i] for i in range(ndim)])
 		except Exception as e:
-			print 'ERROR:', type(e), e
+			print('ERROR:', type(e), e)
 			sys.exit(-127)
 		return l
 	nlive_points = config['nlive_points']
@@ -77,7 +78,7 @@ def run_multinest(**config):
 	if not keep_results:
 		# destroy the evidence (to save disk space)
 		for f in glob.iglob(mn_args['outputfiles_basename'] + "*"):
-			print 'deleting %s' % f
+			print('deleting %s' % f)
 			os.remove(f)
 	
         return results
