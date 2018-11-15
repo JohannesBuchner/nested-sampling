@@ -86,6 +86,7 @@ def priortransform(u):
 # run nested sampling
 
 from nested_sampling.nested_integrator import nested_integrator
+from nested_sampling.termination_criteria import TerminationCriterion
 from nested_sampling.nested_sampler import NestedSampler
 from nested_sampling.samplers.rejection import RejectionConstrainer
 from nested_sampling.samplers.friends import FriendsConstrainer
@@ -96,7 +97,7 @@ sampler = NestedSampler(nlive_points = 400,
 	priortransform=priortransform, loglikelihood=loglikelihood, 
 	draw_constrained = constrainer.draw_constrained, ndim=2)
 constrainer.sampler = sampler
-results = nested_integrator(tolerance=0.5, sampler=sampler)
+results = nested_integrator(sampler=sampler, terminationcriterion=TerminationCriterion(tolerance=0.5))
 
 # add contours?
 

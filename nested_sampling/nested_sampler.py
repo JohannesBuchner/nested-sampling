@@ -86,7 +86,7 @@ class NestedSampler(object):
 		live_pointsx[i] = xj
 		live_pointsL[i] = Lj
 		self.Lmax = max(Lj, self.Lmax)
-		if self.constrainer_get_Lmax() is not None:
+		if self.constrainer_get_Lmax is not None and self.constrainer_get_Lmax() is not None:
 			self.Lmax = max(self.constrainer_get_Lmax(), self.Lmax)
 		self.samples.append([uj, xj, Lj])
 		self.ndraws += int(n)
