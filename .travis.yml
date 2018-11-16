@@ -1,0 +1,28 @@
+language: python
+
+os:
+  - linux
+
+python:
+  - "2.7"
+  - "3.6"
+
+compiler:
+  - gcc
+
+env:
+  - INSTALL=yes
+  - INSTALL=no
+
+install:
+  - sudo apt-get install -qq libblas{3,-dev} liblapack{3,-dev} libatlas{3-base,-dev} cmake build-essential git gfortran 
+#  - pip install --user coveralls
+  - if [[ "$INSTALL" == "yes" ]]; then python setup.py install; fi
+
+script:
+  - if [[ "$INSTALL" == "no" ]]; then 
+      export PYTHONPATH=$PWD
+      make -C nested_sampling/clustering
+    fi
+  - cd examples/lighthouse/; python lighthouse.py
+
