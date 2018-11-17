@@ -4,8 +4,8 @@ os:
   - linux
 
 python:
-  - "2.7_with_system_site_packages"
-  - "3.6_with_system_site_packages"
+  - "2.7"
+  - "3.6"
 
 compiler:
   - gcc
@@ -13,6 +13,9 @@ compiler:
 env:
   - INSTALL=yes
   - INSTALL=no
+
+virtualenv:
+  system_site_packages: true
 
 before_install:
   - sudo apt-get install -qq build-essential python-scipy python-matplotlib python-pip
