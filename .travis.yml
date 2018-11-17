@@ -56,7 +56,6 @@ install:
   - conda info -a
 
   # Install and test
-  - 'echo "backend: Agg" > matplotlibrc'
 
   - if [[ "$INSTALL" == "yes" ]]; then 
        python setup.py install;
@@ -67,6 +66,7 @@ install:
 
 script:
   - cd examples/lighthouse/
+  - 'echo "backend: Agg" > matplotlibrc'
   - python lighthouse.py 200
   - python lighthouse.py 1
   
