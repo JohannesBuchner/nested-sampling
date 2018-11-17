@@ -48,7 +48,7 @@ def nested_integrator(sampler, terminationcriterion, check_every=10,
 	logZ = wi
 	H = Li - logZ
 	pbar.currval = i
-	pbar.max_value = sampler.nlive_points
+	max_value = sampler.nlive_points
 	pbar.start()
 	while True:
 		i = i + 1
@@ -63,7 +63,9 @@ def nested_integrator(sampler, terminationcriterion, check_every=10,
 		
 		# expected number of iterations:
 		i_final = -sampler.nlive_points * (-sampler.Lmax + log(exp(max(0.5 - logZerr, logZerr / 100.) + logZ) - exp(logZ) + 1e-300))
-		pbar.max_value = min(max(i+1, i_final), i+100000)
+		max_value = min(max(i+1, i_final), i+100000)
+		if hasattr(pbar, 'max_value'): pbar.max_value = max_value
+		if hasattr(pbar, 'maxval'):    pbar.maxval = max_value
 		
 		if i == 1 or (i > sampler.nlive_points and i % check_every == 1):
 			terminationcriterion.update(sampler, logwidth, logVolremaining, logZ, H, sampler.Lmax)
@@ -85,7 +87,7 @@ def nested_integrator(sampler, terminationcriterion, check_every=10,
 				break
 		
 		widgets[0] = '|%d/%d samples+%d/%d|lnZ = %.2f +- %.3f + %.3f|L=%.2f @ %s' % (
-			i + 1, pbar.max_value, sampler.nlive_points, sampler.ndraws, terminationcriterion.totalZ, logZerr, terminationcriterion.remainderZerr, Li,
+			i + 1, max_value, sampler.nlive_points, sampler.ndraws, terminationcriterion.totalZ, logZerr, terminationcriterion.remainderZerr, Li,
 			numpy.array_str(xi, max_line_width=1000, precision=4))
 		ui, xi, Li = next(sampler)
 		wi = logwidth + Li
