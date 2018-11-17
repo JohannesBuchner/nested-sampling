@@ -20,5 +20,6 @@ setup(name='nested_sampling',
 		'nested_sampling.samplers.svm',
 		#'nested_sampling.samplers.hamiltonian',
 	],
+	requires = ["numpy (>=1.5)", "scipy", "progressbar-latest"],
 	)
 
