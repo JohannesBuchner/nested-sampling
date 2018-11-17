@@ -1,5 +1,4 @@
 import progressbar
-from progressbar.widgets import WidgetBase
 
 """
 From 2.3-dev of progressbar, not in release yet.
@@ -49,11 +48,4 @@ class AdaptiveETA(progressbar.Timer):
                 eta = (1 - weight) * eta + weight * etasamp
             return 'ETA:  %s' % self.format_time(eta)
 
-class TextWidget(WidgetBase):
-	def __init__(self, label=''):
-		self.label = label
-	def __call__(self, progress, data, **kwargs):
-		return self.label
-		
-		
 

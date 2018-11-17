@@ -8,7 +8,7 @@ from __future__ import print_function
 import numpy
 from numpy import exp, log, log10, pi
 import progressbar
-from .adaptive_progress import AdaptiveETA, TextWidget
+from .adaptive_progress import AdaptiveETA
 from numpy import logaddexp
 
 
