@@ -22,14 +22,16 @@ before_install:
   - pip install progressbar-latest 
 
 install:
-  - if [[ "$INSTALL" == "yes" ]]; then python setup.py install; fi
-
-script:
-  - if [[ "$INSTALL" == "no" ]]; then 
+  - if [[ "$INSTALL" == "yes" ]]; then 
+       python setup.py install;
+    else
       export PYTHONPATH=$PWD;
       make -C nested_sampling/clustering;
     fi
+
+script:
   - cd examples/lighthouse/
+  - 'echo "backend: Agg" > matplotlibrc'
   - python lighthouse.py 200
   - python lighthouse.py 1
   
