@@ -26,5 +26,8 @@ script:
       export PYTHONPATH=$PWD;
       make -C nested_sampling/clustering;
     fi
-  - cd examples/lighthouse/; python lighthouse.py
+  - cd examples/lighthouse/
+  - python lighthouse.py 200
+  - python lighthouse.py 1
+  
 
