@@ -14,14 +14,50 @@ env:
   - INSTALL=yes
   - INSTALL=no
 
-virtualenv:
-  system_site_packages: true
-
-before_install:
-  - sudo apt-get install -qq build-essential python-scipy python-matplotlib python-pip
-  - pip install progressbar-latest 
-
 install:
+  - sudo apt-get install -qq build-essential python-scipy python-matplotlib python-pip
+  - export CONDA_BASE="http://repo.continuum.io/miniconda/Miniconda"
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then 
+      if [[ "${TRAVIS_PYTHON_VERSION}" == 2* ]]; then
+        wget ${CONDA_BASE}2-latest-MacOSX-x86_64.sh -O miniconda.sh;
+      else
+        wget ${CONDA_BASE}3-latest-MacOSX-x86_64.sh -O miniconda.sh;
+      fi
+    else
+      if [[ "${TRAVIS_PYTHON_VERSION}" == 2* ]]; then
+        wget ${CONDA_BASE}2-latest-Linux-x86_64.sh -O miniconda.sh;
+      else
+        wget ${CONDA_BASE}3-latest-Linux-x86_64.sh -O miniconda.sh;
+      fi
+    fi
+  - bash miniconda.sh -b -p ${HOME}/miniconda
+  - export PATH="${HOME}/miniconda/bin:${PATH}"
+  - hash -r
+
+  # Create the testing environment
+  # ------------------------------
+  - conda config --set always_yes yes
+  - conda config --set changeps1 no
+  - conda config --set show_channel_urls true
+  - conda config --add channels conda-forge
+  - conda update --quiet conda
+  - ENV_NAME="test-environment"
+  - conda create --quiet -n ${ENV_NAME} python=${TRAVIS_PYTHON_VERSION}
+  - source activate ${ENV_NAME}
+
+  # Customise the testing environment
+  # ---------------------------------
+  - conda install --quiet --file conda-requirements.txt
+  - pip install progressbar-latest coveralls
+
+  # Summerise environment
+  # ---------------------
+  - conda list
+  - conda info -a
+
+  # Install and test
+  - 'echo "backend: Agg" > matplotlibrc'
+
   - if [[ "$INSTALL" == "yes" ]]; then 
        python setup.py install;
     else
@@ -31,7 +67,6 @@ install:
 
 script:
   - cd examples/lighthouse/
-  - 'echo "backend: Agg" > matplotlibrc'
   - python lighthouse.py 200
   - python lighthouse.py 1
   
