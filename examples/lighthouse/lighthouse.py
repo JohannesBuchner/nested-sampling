@@ -91,7 +91,8 @@ from nested_sampling.nested_sampler import NestedSampler
 from nested_sampling.samplers.rejection import RejectionConstrainer
 from nested_sampling.samplers.friends import FriendsConstrainer
 import nested_sampling.postprocess as post
-#constrainer = RejectionConstrainer()
+
+
 constrainer = FriendsConstrainer(radial = True, metric = 'euclidean', jackknife=True)
 sampler = NestedSampler(nlive_points = 400, 
 	priortransform=priortransform, loglikelihood=loglikelihood, 
@@ -99,8 +100,7 @@ sampler = NestedSampler(nlive_points = 400,
 constrainer.sampler = sampler
 results = nested_integrator(sampler=sampler, terminationcriterion=TerminationCriterion(tolerance=0.5))
 
-# add contours?
-
+# extract contours:
 usamples, xsamples = post.equal_weighted_posterior(results['weights'])
 
 u, x, L, width = list(zip(*results['weights']))
@@ -118,18 +118,6 @@ weight = numpy.add(L, width)
 z = exp(weight - weight.max()).cumsum()
 z /= z.max()
 
-#xi = numpy.linspace(-2, 2, 20)
-#yi = numpy.linspace(0, 2, 20)
-##from matplotlib.mlab import griddata
-##zi = griddata(x, y, z, xi, yi)
-#X, Y = numpy.meshgrid(xi, yi)
-#Z = X * 0 + Y * 0
-#from scipy.interpolate import griddata
-#Z = griddata((x, y), z, (X, Y), method='nearest')
-#for xj, yj, zj in zip(x, y, z):
-#	j = int(((xj + 2) / 4) * len(xi))
-#	i = int((yj / 2) * len(yi))
-#	Z[i,j] = max(Z[i, j], zj)
 import scipy.spatial
 for limit, color in [(0.01, 'DarkBlue'), (0.1, 'DeepSkyBlue'), (0.5, 'DarkRed')]:
 	mask = z > limit
@@ -140,11 +128,9 @@ for limit, color in [(0.01, 'DarkBlue'), (0.1, 'DeepSkyBlue'), (0.5, 'DarkRed')]
 	for simplex in hull.simplices:
 		plt.plot(xsel[simplex], ysel[simplex], '-', color=color)
 
-#plt.contour(X, Y, Z, [0.01, 0.1, 0.5])
-
 
 
 plt.savefig('lighthouse_posterior.pdf', bbox_inches='tight')
-
+plt.close()
 
 
