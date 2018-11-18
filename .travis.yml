@@ -62,7 +62,7 @@ install:
     else
       make -C nested_sampling/clustering;
       export PYTHONPATH=$PWD;
-      export LD_LIBRARY_PATH="$PWD/nested_sampling/clustering;${LD_LIBRARY_PATH}"
+      export LD_LIBRARY_PATH="$PWD/nested_sampling/clustering;${LD_LIBRARY_PATH}";
     fi
 
 script:
