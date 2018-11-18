@@ -138,7 +138,7 @@ class MCMCConstrainer(object):
 		naccepts = 0
 		assert Li >= Lmin
 		while True:
-			self.proposer.new_chain(ui, ndim, live_pointsu, is_inside_unit_filter)
+			self.proposer.new_chain(live_pointsu, is_inside_unit_filter)
 			n = 0
 			for i in range(self.nmaxsteps):
 				u = self.proposer.propose(ui, ndim, live_pointsu, is_inside_unit_filter)

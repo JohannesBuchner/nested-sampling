@@ -17,7 +17,7 @@ from nested_sampling.samplers.hiermetriclearn import MetricLearningFriendsConstr
 from nested_sampling.samplers.mcmc import MCMCConstrainer, GaussProposal, MultiScaleProposal
 from nested_sampling.samplers.svm.svmnest import SVMConstrainer
 from nested_sampling.samplers.ellipsoidal import EllipsoidConstrainer, MultiEllipsoidConstrainer
-from nested_sampling.samplers.hybrid import FilteredMCMCConstrainer, FilteredGaussProposal, HybridMLFriendsConstrainer, HybridMLMultiEllipsoidConstrainer
+from nested_sampling.samplers.hybrid import FilteredMCMCConstrainer, FilteredGaussProposal, HybridMLFriendsConstrainer, HybridMLMultiEllipsoidConstrainer, FilteredUnitRandomSliceProposal, FilteredSliceConstrainer
 
 from nested_sampling.termination_criteria import TerminationCriterion, MaxErrorCriterion, BootstrappedCriterion, RememberingBootstrappedCriterion, DecliningBootstrappedCriterion, NoisyBootstrappedCriterion, NoiseDetectingBootstrappedCriterion
 
