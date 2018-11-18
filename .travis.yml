@@ -56,6 +56,7 @@ install:
   - conda info -a
 
   # Install and test
+  - 'echo "backend: Agg" > matplotlibrc'
   - make -C nested_sampling/clustering;
   - if [[ "$INSTALL" == "yes" ]]; then 
        python setup.py install;
