@@ -1,4 +1,4 @@
-import clusterdetect 
+from . import clusterdetect 
 import matplotlib.pyplot as plt
 import numpy
 from numpy import log10, log, exp
@@ -21,12 +21,13 @@ def test_clusterdetect():
 	fout = open('x_1d_clustergraph.dot', 'w')
 	fout.write("digraph g{\n")
 	for i, (a, b, dist, entries) in enumerate(cluster):
-		#print '%3d%s %3d%s %.2f %3d' % (a, 
-		#	'*' if a < n else ' ', b, '*' if b < n else ' ', dist, entries)
+		a, b = int(a), int(b)
+		#print('%3d%s %3d%s %.2f %3d' % (a, 
+		#	'*' if a < n else ' ', b, '*' if b < n else ' ', dist, entries))
 		if a < n:
-			fout.write("%d[label=%.3f,shape=square];\n" % (a, u[a]))
+			fout.write("%d[label=%.3f,shape=square];\n" % (a, u[a,0]))
 		if b < n:
-			fout.write("%d[label=%.3f,shape=square];\n" % (b, u[b]))
+			fout.write("%d[label=%.3f,shape=square];\n" % (b, u[b,0]))
 		fout.write("%d -> %d [label=%.2f];\n" % (i+n, a, dist))
 		fout.write("%d -> %d [label=%.2f];\n" % (i+n, b, dist))
 		tree[i + n] = (a, b, dist, entries)
