@@ -48,7 +48,7 @@ install:
   # Customise the testing environment
   # ---------------------------------
   - conda install --quiet --file conda-requirements.txt
-  - pip install --user coveralls progressbar-latest
+  - pip install --user coveralls progressbar-latest metric-learn
 
   # Summerise environment
   # ---------------------
