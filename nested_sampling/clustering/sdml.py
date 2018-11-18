@@ -36,8 +36,8 @@ import numpy
 from numpy import exp
 try:
 	from scipy.sparse.csgraph import laplacian
-	from sklearn.covariance import graph_lasso
-	from sklearn.utils.extmath import pinvh
+	from sklearn.covariance import graphical_lasso
+	from scipy.linalg import pinvh
 except ImportError:
 	pass
 import scipy.linalg
@@ -250,7 +250,7 @@ class SDML(object):
 		balance_param: float, optional
 		trade off between sparsity and M0 prior
 		sparsity_param: float, optional
-		trade off between optimizer and sparseness (see graph_lasso)
+		trade off between optimizer and sparseness (see graphical_lasso)
 		use_cov: bool, optional
 		controls prior matrix, will use the identity if use_cov=False
 		verbose : bool, optional
@@ -295,7 +295,7 @@ class SDML(object):
 		emp_cov = pinvh(P)
 		# hack: ensure positive semidefinite
 		emp_cov = emp_cov.T.dot(emp_cov)
-		M, _ = graph_lasso(emp_cov, self.sparsity_param, verbose=self.verbose)
+		M, _ = graphical_lasso(emp_cov, self.sparsity_param, verbose=self.verbose)
 		self.M = M
 		C = numpy.linalg.cholesky(self.M)
 		self.dewhiten_ = C
@@ -354,94 +354,4 @@ class TruncatedSDML(SDML):
 		s = np.diag(s)
 		self.whiten_ = np.dot(np.dot(U, s_inv), U.T)
 		self.dewhiten_ = np.dot(np.dot(U, s), U.T)
-	
-	#def transform(self, x):
-	#	return numpy.dot((x - self.mean) / self.scale, self.whiten_.T)
-	
-	#def untransform(self, y):
-	#	return numpy.dot(y, self.dewhiten_) * self.scale + self.mean
 
-def test_generate_corr_sample(N, ndim, difficulty):
-	logmatrix = numpy.zeros((ndim, ndim), dtype=int)
-	matrix = numpy.zeros((ndim, ndim))
-
-	for i in range(ndim):
-		for j in range(i+1):
-			logmatrix[i,j] = (((j*i) % (5+i)) // 2) % 5
-			logmatrix[j,i] = logmatrix[i,j]
-	
-	for i in range(ndim):
-		for j in range(i+1):
-			scalei = numpy.exp(-logmatrix[i,i] - 2)
-			scalej = numpy.exp(-logmatrix[j,j] - 2)
-			if i == j:
-				matrix[i,i] = scalei*scalej
-			else:
-				matrix[i,j] = (1 - numpy.exp(-logmatrix[i,j]*difficulty))*scalei*scalej
-				matrix[j,i] = (1 - numpy.exp(-logmatrix[j,i]*difficulty))*scalei*scalej
-	# ensure positive semi-definite
-	_, matrix = scipy.linalg.polar(matrix)
-	invmatrix = numpy.linalg.inv(matrix)
-	
-	mean = numpy.zeros(ndim)
-	
-	# generate N points
-	from nestle import Ellipsoid
-	print('generating from:', matrix) #, invmatrix
-	ell = Ellipsoid(mean, invmatrix)
-	samples = numpy.array([ell.sample() for i in range(N)])
-	return samples
-
-if __name__ == '__main__':
-	# generate sample
-	import matplotlib.pyplot as plt
-	import os
-	N = 40
-	for ndim, difficulty in (2, 0), (3,4), (10, 1), (20, 1), (20, 2), ('sdml_difficult_samples.npz', -1):
-	#for ndim, difficulty in ('sdml_difficult_samples.npz', -1),:
-	#sfor ndim, difficulty in ('maha.npz', -1),:
-	#for ndim, difficulty in (3,4),:
-		if difficulty == -1:
-			print()
-			print('======== TEST file=%s ==========' % (ndim))
-			print()
-			data = numpy.load(ndim)
-			print(list(data.keys()))
-			#samples = numpy.load(ndim)['X']
-			samples = numpy.load(ndim)[list(data.keys())[0]]
-		else:
-			print()
-			print('======== TEST ndim=%d difficulty %d ==========' % (ndim, difficulty))
-			print()
-			samples = test_generate_corr_sample(N=N, ndim=ndim, difficulty=difficulty)
-		
-		#for metric in IdentityMetric(), SimpleScaling(), TruncatedScaling(), MahalanobisMetric(), TruncatedMahalanobisMetric(), SDML(), TruncatedSDML():
-		for metric in SDMLWrapper(),:
-		#for metric in TruncatedMahalanobisMetric(verbose=True),:
-			print(('testing metric %s' % type(metric)))
-			metric.fit(samples)
-			wsamples = metric.transform(samples)
-			#assert wsamples.shape == samples.shape, (wsamples.shape, samples.shape)
-			samples2 = metric.untransform(wsamples)
-			#for s1, w, s2 in zip(samples, wsamples, samples2):
-			#	assert numpy.allclose(s1, s2), (s1, s2, w)
-			#assert numpy.allclose(samples2, samples), (metric, samples, wsamples, samples2)
-			#print (metric, samples, wsamples, samples2)
-			if os.environ.get('SHOW_PLOTS', '0') == '1':
-				plt.plot(samples[:,-2], samples[:,-1], 'x ', color='gray')
-				plt.plot(wsamples[:,-2], wsamples[:,-1], 'o ', color='r')
-				plt.plot(samples2[:,-2], samples2[:,-1], '+ ', color='k')
-				print('showing plot...')
-				plt.show()
-			
-			small_samples = samples / 10
-			metric.fit(small_samples)
-			wsamples = metric.transform(small_samples)
-			#assert wsamples.shape == small_samples.shape, (wsamples.shape, small_samples.shape)
-			samples2 = metric.untransform(wsamples)
-			#assert numpy.allclose(samples2, small_samples), (metric, small_samples, wsamples, samples2)
-	
-	print('no assertion errors, so tests successful')
-	
-	
-	
