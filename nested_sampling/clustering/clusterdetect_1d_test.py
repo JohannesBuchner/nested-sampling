@@ -1,4 +1,4 @@
-from clustering import clusterdetect 
+import clusterdetect 
 import matplotlib.pyplot as plt
 import numpy
 from numpy import log10, log, exp
