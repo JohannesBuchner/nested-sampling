@@ -70,6 +70,7 @@ script:
   - 'echo "backend: Agg" > matplotlibrc'
   - python lighthouse.py 200
   - python lighthouse.py 1
-  
+  - cd ../..
+
 after_success: coveralls
 
