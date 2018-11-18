@@ -1,12 +1,17 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
-from distutils.core import setup
+try:
+    from setuptools import setup
+except:
+    from distutils.core import setup
 
-long_description = ''
-with open('README.rst') as f:
-	long_description = f.read()
+long_description = None
+with open('README.rst') as file:
+    long_description = file.read()
 
-setup(name='nested_sampling',
+setup(
+	name='nested_sampling',
 	version='0.3',
 	url='https://github.com/JohannesBuchner/UltraNest',
 	author='Johannes Buchner',
@@ -23,5 +28,5 @@ setup(name='nested_sampling',
 	],
 	setup_requires=['pytest-runner'],
 	tests_require=['pytest'],
-	)
+)
 
