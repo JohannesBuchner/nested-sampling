@@ -70,8 +70,24 @@ def test_naive():
 	run(constrainer, termination)
 
 def test_mcmc():
-	proposer = MultiScaleProposal(adapt='sivia-neg-binom', scale=1)
+	proposer = GaussProposal(adapt='sivia')
 	constrainer = MCMCConstrainer(proposer=proposer, nsteps=nsteps, nminaccepts=nsteps)
+	termination = TerminationCriterion(tolerance=0.5)
+	run(constrainer, termination)
+
+def test_mcmc_multiscale():
+	proposer = MultiScaleProposal()
+	constrainer = MCMCConstrainer(proposer=proposer, nsteps=nsteps, nminaccepts=nsteps)
+	termination = TerminationCriterion(tolerance=0.5)
+	run(constrainer, termination)
+
+def test_ellipsoid():
+	constrainer = EllipsoidConstrainer()
+	termination = TerminationCriterion(tolerance=0.5)
+	run(constrainer, termination)
+
+def test_multiellipsoid():
+	constrainer = MultiEllipsoidConstrainer()
 	termination = TerminationCriterion(tolerance=0.5)
 	run(constrainer, termination)
 
@@ -99,7 +115,7 @@ def test_hmlfriends():
 		force_shrink=True, 
 		rebuild_every=nlive_points, 
 		verbose=False)
-	proposer = FilteredGaussProposal(adapt='sivia', scale=0.1)
+	proposer = FilteredGaussProposal(adapt='sivia-neg-binom', scale=0.1)
 	filtered_mcmc = FilteredMCMCConstrainer(proposer=proposer, nsteps=nsteps)
 	constrainer = HybridMLFriendsConstrainer(friends_filter, filtered_mcmc, 
 		switchover_efficiency=0, unfiltered=False)

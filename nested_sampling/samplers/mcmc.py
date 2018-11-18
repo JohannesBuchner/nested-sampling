@@ -94,7 +94,7 @@ class MultiScaleProposal(BaseProposal):
 	def __repr__(self):
 		return 'MultiScaleProposal(loc=%s, scale=%s, adapt=%s)' % (self.loc, self.scale, self.adapt)
 	def propose(self, u, ndim, live_pointsu=None, is_inside_filter=None):
-		p = u + numpy.random.normal() * 10**(self.scale + (self.loc - self.scale) * numpy.random.uniform())
+		p = u + numpy.random.normal(size=ndim) * 10**(self.scale + (self.loc - self.scale) * numpy.random.uniform(size=ndim))
 		p[p > 1] = 1
 		p[p < 0] = 0
 		#p = p - numpy.floor(p)
