@@ -60,8 +60,9 @@ install:
   - if [[ "$INSTALL" == "yes" ]]; then 
        python setup.py install;
     else
-      export PYTHONPATH=$PWD;
       make -C nested_sampling/clustering;
+      export PYTHONPATH=$PWD;
+      export LD_LIBRARY_PATH="$PWD/nested_sampling/clustering;${LD_LIBRARY_PATH}"
     fi
 
 script:
