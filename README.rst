@@ -14,6 +14,9 @@ The source code consists of three components:
 2) Test framework to evaluate the performance and accuracy of algorithms (testsuite)
 3) UltraNest - A fast C implementation of a mixed RadFriends/MCMC nested sampling algorithm
 
+.. image:: https://travis-ci.org/JohannesBuchner/UltraNest.svg?branch=master
+    :target: https://travis-ci.org/JohannesBuchner/UltraNest
+
 Currently implemented algorithms
 ----------------------------------
 
