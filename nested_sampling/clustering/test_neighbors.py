@@ -5,9 +5,9 @@ import scipy.spatial
 from numpy.ctypeslib import ndpointer
 
 if int(os.environ.get('OMP_NUM_THREADS', '1')) > 1:
-        libname = 'neighbors-parallel.so'
+        libname = 'cneighbors-parallel.so'
 else:
-        libname = 'neighbors.so'
+        libname = 'cneighbors.so'
 
 lib = cdll.LoadLibrary(os.path.join(os.path.dirname(os.path.abspath(__file__)), libname))
 lib.most_distant_nearest_neighbor.argtypes = [
@@ -33,7 +33,7 @@ def nearest_rdistance_guess(u, metric='euclidean'):
 	#print 'distance to nearest:', rdistance, nearest_neighbor_distance
 	return rdistance
 
-if __name__ == '__main__':
+def test_rdistance_c():
 	for i in 1, 2, 3, 4, 5:
 		print('==== INPUT ====')
 		print('SEED=%d' % i)
@@ -48,6 +48,9 @@ if __name__ == '__main__':
 		rc = most_distant_nearest_neighbor(xx)
 		print(rc)
 		assert rc == rpy, (rc, rpy)
+
+if __name__ == '__main__':
+	test_rdistance_c()
 	print('speed test...')
 	xx = numpy.random.uniform(size=(30000, 2))
 	print(most_distant_nearest_neighbor(xx))
