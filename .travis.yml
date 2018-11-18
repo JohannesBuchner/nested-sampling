@@ -56,10 +56,10 @@ install:
   - conda info -a
 
   # Install and test
+  - make -C nested_sampling/clustering;
   - if [[ "$INSTALL" == "yes" ]]; then 
        python setup.py install;
     else
-      make -C nested_sampling/clustering;
       export PYTHONPATH=$PWD;
       export LD_LIBRARY_PATH="${PWD}/nested_sampling/clustering;${LD_LIBRARY_PATH}";
     fi
