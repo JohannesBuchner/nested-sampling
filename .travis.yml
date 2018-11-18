@@ -56,15 +56,14 @@ install:
   - conda info -a
 
   # Install and test
-
   - if [[ "$INSTALL" == "yes" ]]; then 
        python setup.py install;
-       coverage run setup.py test
     else
       make -C nested_sampling/clustering;
       export PYTHONPATH=$PWD;
-      export LD_LIBRARY_PATH="$PWD/nested_sampling/clustering;${LD_LIBRARY_PATH}";
+      export LD_LIBRARY_PATH="${PWD}/nested_sampling/clustering;${LD_LIBRARY_PATH}";
     fi
+  - coverage run setup.py test
 
 script:
   - cd examples/lighthouse/
